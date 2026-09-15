@@ -84,6 +84,20 @@ button,input,textarea,select{font:inherit;color:inherit}
   max-width:1180px; margin:0 auto; padding:10px 20px;
   display:flex; align-items:center; gap:20px; flex-wrap:wrap;
 }
+.flags{display:flex;gap:3px;padding:3px;background:var(--rule-2);border-radius:999px;flex:none}
+.flag-tab{
+  display:inline-flex; align-items:center; gap:7px; cursor:pointer;
+  background:none; border:0; border-radius:999px; padding:5px 12px 5px 9px;
+  font-size:13px; font-weight:500; color:var(--ink-3); white-space:nowrap;
+  transition:background .14s,color .14s,box-shadow .14s;
+}
+.flag-tab svg{border-radius:2px;box-shadow:0 0 0 1px rgba(35,31,32,.16);flex:none;display:block}
+.flag-tab:hover{color:var(--ink-2)}
+.flag-tab[aria-selected="true"]{
+  background:var(--raised); color:var(--ink);
+  box-shadow:0 1px 2px rgba(35,31,32,.14);
+}
+.flag-tab[aria-selected="false"] svg{opacity:.45;filter:saturate(.35)}
 .steps{display:flex; gap:4px; flex-wrap:wrap; flex:1 1 auto; min-width:0}
 .step{
   display:flex; align-items:baseline; gap:7px; padding:5px 11px 5px 9px;
@@ -411,6 +425,7 @@ dialog::backdrop{background:rgba(10,12,14,.55)}
          Left out of the published artifact on purpose: that URL is shareable, and a
          page carrying the mark and sending client approaches reads as an official
          Ebury system to anyone the link reaches. -->
+    <nav class="flags" id="flags" aria-label="Market"></nav>
     <nav class="steps" id="steps"></nav>
     <div class="meter" id="meter"><span>Lusha</span> <b class="mono">—</b> <span>credits</span></div>
   </div>
@@ -525,7 +540,7 @@ dialog::backdrop{background:rgba(10,12,14,.55)}
 <dialog id="dlg-sector">
   <form method="dialog" class="dlg">
     <h3>Sector &amp; targeting</h3>
-    <p>Every search is United Kingdom only. Set what you want here and it runs straight away — a written brief is optional.</p>
+    <p id="sector-geo">Set what you want here and it runs straight away — a written brief is optional.</p>
     <div class="scroller" id="sector-body"></div>
     <div class="dlg-foot">
       <button class="btn" value="cancel" type="submit">Cancel</button>
@@ -567,6 +582,7 @@ var S = {
   mail: { subject:"", body:"", sig:"" },
   pvIndex: 0,
   sending: false,
+  countryId: "GB",
 
   /* The ledger is what stops the same names coming back. It outlives the
      session in localStorage.
@@ -578,6 +594,27 @@ var S = {
   opts: { perCompany:2, showSeen:false, newCompaniesOnly:false },
   run: { index:1, pages:0, scanned:0, hidSeen:0, hidContacted:0, hidCompany:0, hidTitle:0, exhausted:false }
 };
+
+/* The desk books two markets. The flag tabs switch which one every search
+   targets; cursors are per-country so each keeps its own position. */
+var COUNTRIES = [
+  { id:"GB", name:"United Kingdom", label:"UK",
+    flag:'<svg viewBox="0 0 60 30" width="21" height="11" aria-hidden="true">' +
+      '<path d="M0 0h60v30H0z" fill="#012169"/>' +
+      '<path d="M0 0 60 30M60 0 0 30" stroke="#fff" stroke-width="6"/>' +
+      '<path d="M0 0 60 30M60 0 0 30" stroke="#C8102E" stroke-width="3"/>' +
+      '<path d="M30 0v30M0 15h60" stroke="#fff" stroke-width="10"/>' +
+      '<path d="M30 0v30M0 15h60" stroke="#C8102E" stroke-width="6"/></svg>' },
+  { id:"AE", name:"United Arab Emirates", label:"UAE",
+    flag:'<svg viewBox="0 0 60 30" width="21" height="11" aria-hidden="true">' +
+      '<path d="M0 0h60v10H0z" fill="#00732F"/>' +
+      '<path d="M0 10h60v10H0z" fill="#FFFFFF"/>' +
+      '<path d="M0 20h60v10H0z" fill="#000000"/>' +
+      '<path d="M0 0h15v30H0z" fill="#EF3340"/></svg>' }
+];
+function country(){
+  return COUNTRIES.filter(function(c){ return c.id === S.countryId; })[0] || COUNTRIES[0];
+}
 
 var TARGET = 100;     // fresh contacts we try to fill a run with
 var MAX_PAGES = 10;   // page fetches per run before we stop digging
@@ -617,6 +654,16 @@ function loadSig(){
 }
 function saveSig(){
   try { localStorage.setItem("desk.sig", S.mail.sig); } catch(e){}
+}
+
+function loadCountry(){
+  try {
+    var v = localStorage.getItem("desk.country");
+    if (v && COUNTRIES.some(function(c){ return c.id === v; })) S.countryId = v;
+  } catch(e){}
+}
+function saveCountry(){
+  try { localStorage.setItem("desk.country", S.countryId); } catch(e){}
 }
 
 /* ---- the ledger ---- */
@@ -674,8 +721,9 @@ function sigOf(f){
     l:(f.seniorityIds||[]).slice().sort(),
     t:(f.jobTitles||[]).slice().sort(),
     z:(f.sizes||[]).map(function(b){ return b.min + "-" + (b.max || ""); }).sort(),
+    n:S.countryId,
     x:!!f.excludeLarge,
-    g:!!f.titleGuard
+    g:(f.titleGroups||[]).slice().sort().join(",")
   };
   var str = JSON.stringify(norm), h = 5381;
   for (var i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) | 0;
@@ -758,9 +806,11 @@ function boot(){
   loadCRM();
   loadSig();
   loadLedger();
+  loadCountry();
   if (!S.mail.sig){
     S.mail.sig = "Kayln Stock\nFX & Trade Finance\n\n—\nYou're receiving this because of your role in finance at {{company}}. Reply \"no thanks\" and I won't contact you again.";
   }
+  renderFlags();
   renderSteps();
   bindStatic();
   startTyping();
@@ -809,6 +859,34 @@ function refreshMeter(){
 /* ============================================================
    Navigation
    ============================================================ */
+function renderFlags(){
+  $("flags").innerHTML = COUNTRIES.map(function(c){
+    var on = c.id === S.countryId;
+    return '<button class="flag-tab" type="button" role="tab" data-country="' + c.id +
+           '" aria-selected="' + on + '" title="' + esc(c.name) + '">' + c.flag + c.label + '</button>';
+  }).join("");
+}
+/* Switching market re-runs whatever is on screen against the other country;
+   each keeps its own page cursor, so neither loses its place. */
+function setCountry(id){
+  if (id === S.countryId) return;
+  S.countryId = id;
+  saveCountry();
+  renderFlags();
+  $("dlg-sector").close();
+  if (S.reached >= 1 && S.filters){
+    briefBusy("Searching " + country().label);
+    go(0);
+    runSearch(S.filters).then(function(){
+      briefIdle(); go(1); renderList(); refreshMeter();
+    }).catch(function(e){
+      briefIdle();
+      $("brief-error").innerHTML = noticeHTML("bad", "Couldn't run that search",
+        "<p style='margin:0'>" + esc(explain(e, LUSHA)) + "</p>");
+    });
+  }
+}
+
 var STEPS = ["Brief", "Prospects", "Message", "Send"];
 function renderSteps(){
   var h = "";
@@ -940,6 +1018,10 @@ function bindStatic(){
     saveCRM();
     if (S.reached >= 1) renderList();
   });
+  $("flags").addEventListener("click", function(e){
+    var b = e.target.closest("[data-country]");
+    if (b) setCountry(b.getAttribute("data-country"));
+  });
   bindListOnce();
   $("btn-back-list").addEventListener("click", function(){ go(1); });
   $("btn-to-send").addEventListener("click", function(){ reach(3); go(3); });
@@ -1047,7 +1129,7 @@ function parseBrief(text, tax){
     "DEPARTMENTS (only these three exist): " + DEPTS_ALLOWED.join(", ") + "\n" +
     "HEADCOUNT BUCKETS: " + sizeLine + "\n\n" +
     "Rules:\n" +
-    "- Every search is United Kingdom only. Do not return a country.\n" +
+    "- Every search is " + country().name + " only. Do not return a country.\n" +
     "- subIndustryIds: pick every sub-industry id the brief plausibly covers. Include adjacent ones (an 'aviation' brief covers both air services and aerospace manufacturing). Empty array if the brief names no sector.\n" +
     "- departments: only from the DEPARTMENTS list. Default to all three unless the brief clearly wants only one.\n" +
     "- seniorityIds: ids from SENIORITY. Decision-maker briefs usually mean c-suite, vice president and director.\n" +
@@ -1074,7 +1156,7 @@ function parseBrief(text, tax){
         ? f.sizes.map(function(b){ return valid[Number(b && b.min) + "-" + (b && b.max ? Number(b.max) : "")]; }).filter(Boolean)
         : [],
       excludeLarge: true,
-      titleGuard: true,
+      titleGroups: ["finance","director","operations"],
       summary: typeof f.summary === "string" ? f.summary : ""
     };
   }).catch(function(err){
@@ -1090,7 +1172,7 @@ function parseBrief(text, tax){
 function blankFilters(){
   return { subIndustryIds:[], departments:["Finance","General Management","Operations"],
            seniorityIds:[10,9,8,6], jobTitles:[], sizes:[], excludeLarge:true,
-           titleGuard:true, summary:"" };
+           titleGroups:["finance","director","operations"], summary:"" };
 }
 function optHTML(attr, val, label, on){
   return '<label class="opt' + (on ? " on" : "") + '"><input type="checkbox" data-' + attr +
@@ -1131,13 +1213,14 @@ function openFilters(){
       }).join("") + '</div>' +
       '<div class="sm" style="margin-top:6px">Leave all clear for any size. Lusha only matches these bands, so a band of your own returns nothing.</div></div>';
 
-    h += '<div class="fset"><h4>Job titles</h4>' +
-      '<label class="opt' + (f.titleGuard ? " on" : "") + '" style="font-size:13.5px">' +
-      '<input type="checkbox" id="f-titleguard"' + (f.titleGuard ? " checked" : "") + '>Finance and leadership titles only</label>' +
-      '<div class="sm" style="margin-top:6px">Keeps finance of every stripe (CFO, FD, controller, treasury, accounts), ' +
-      'the people who own the business (founder, CEO, managing director, owner, president) and real operations leadership (COO, operations director). ' +
-      'Drops procurement, supply chain, commercial, strategy, project and non-executive roles that sit in the same departments. ' +
-      'Naming exact titles below turns this off for that search.</div></div>';
+    h += '<div class="fset"><h4>Job titles</h4><div class="opts">' +
+      TITLE_GROUPS.map(function(g){
+        return optHTML("tgroup", g.id, g.label, (f.titleGroups || []).indexOf(g.id) >= 0);
+      }).join("") + '</div>' +
+      '<div class="sm" style="margin-top:7px">' +
+      TITLE_GROUPS.map(function(g){ return '<b>' + esc(g.label) + '</b> — ' + esc(g.note); }).join('<br>') +
+      '<br><br>Anything outside these three is dropped: procurement, supply chain, commercial, strategy, project, non-executive and investor roles all sit in the same Lusha departments. ' +
+      'Clear all three to turn the filtering off.</div></div>';
 
     h += '<div class="fset"><h4>Exact titles</h4>' +
       '<input id="f-titles" type="text" autocomplete="off" placeholder="Chief Financial Officer, Group Treasurer" value="' +
@@ -1152,6 +1235,8 @@ function openFilters(){
       'Companies with no size or revenue on file are kept.</div></div>';
 
     body.innerHTML = h;
+    $("sector-geo").textContent = "Every search runs against " + country().name +
+      " — switch market with the flags at the top. Set what you want here and it runs straight away; a written brief is optional.";
   }).catch(function(e){
     body.innerHTML = noticeHTML("bad", "Couldn't load the filter values",
       "<p style='margin:0'>" + esc(explain(e, LUSHA)) + "</p>");
@@ -1177,8 +1262,7 @@ function applyFilters(){
   f.jobTitles = t ? t.value.split(",").map(function(x){ return x.trim(); }).filter(Boolean).slice(0, 8) : [];
   var big = $("f-bigco");
   f.excludeLarge = big ? big.checked : true;
-  var tg = $("f-titleguard");
-  f.titleGuard = tg ? tg.checked : true;
+  f.titleGroups = picked("tgroup");
 
   f.summary = describeFilters(f);
   S.filters = f;
@@ -1209,7 +1293,7 @@ function describeFilters(f){
     ? " with " + f.sizes.map(function(b){ return b.max ? b.min + "-" + b.max : b.min + "+"; }).join(" or ") + " staff"
     : "";
   return who + " at " + (sectors.length ? sectors.slice(0, 4).join(", ") : "") +
-         " businesses in the UK" + size + ".";
+         " businesses in " + country().name + size + ".";
 }
 
 /* Out of criteria for this desk: companies big enough to have their own treasury
@@ -1225,23 +1309,38 @@ var BIG_STAFF = 1001, BIG_REV = 500000000;
    operations leadership, and drop the rest. Checked against live titles. */
 var DEPTS_ALLOWED = ["Finance", "General Management", "Operations"];
 var T_NED    = /non[\s-]?exec/i;
-var T_CORE   = /\b(cfo|chief financial|chief finance|finance|financial|treasur\w*|controller|comptroller|accounts?|accounting|accountant|fp&a|bursar|credit control)\b/i;
+var T_FIN    = /\b(cfo|chief financial|chief finance|finance|financial|treasur\w*|controller|comptroller|accounts?|accounting|accountant|fp&a|bursar|credit control)\b/i;
 var T_INVEST = /\b(investment|investor relations|portfolio|fund|venture|private equity)\b/i;
-var T_LEADER = /\b(founder|co[\s-]?founder|ceo|chief executive|managing director|owner|proprietor|president)\b/i;
 var T_OPS    = /\b(coo|chief operating|operating officer|operations)\b/i;
 var T_OPS_NO = /\b(sales|marketing|revenue|people|hr|human resources|talent|customer|security|network|clinical|it)\b/i;
+var T_OWNER  = /\b(founder|co[\s-]?founder|ceo|chief executive|managing director|managing partner|md|mp|owner|proprietor|president|partner)\b/i;
+/* "Director" with no function in front of it — a plain board director, not a
+   Commercial Director or a Project Director. */
+var T_DIR_BARE = /^(?:group\s+|executive\s+|company\s+|board\s+|main\s+|deputy\s+)*director$/i;
 
-function titleAllowed(title){
-  var t = String(title || "");
-  if (!t) return false;
-  if (T_NED.test(t)) return false;                           // NEDs do not buy facilities
-  if (T_CORE.test(t)) return !T_INVEST.test(t);              // finance, but not investors
-  /* "President" must not match inside "Vice President" — a VP of EMEA is not
-     the person who owns the company. A VP of Finance is already kept above. */
-  if (T_LEADER.test(t.replace(/\bvice\s+president\b/ig, " ").replace(/\bvp\b/ig, " "))) return true;
-  if (T_OPS.test(t)) return !T_OPS_NO.test(t);               // real ops, not sales ops
-  return false;
+var TITLE_GROUPS = [
+  { id:"finance",    label:"Finance",   note:"CFO, finance director, controller, treasury, accounts" },
+  { id:"director",   label:"Director",  note:"MD, managing partner, CEO, founder, owner, plain director" },
+  { id:"operations", label:"Operations", note:"COO, operations director, head of operations" }
+];
+
+/* Which of the three professions a title belongs to, or null for the ones that
+   sit in the same departments but never buy — procurement, supply chain,
+   commercial, strategy, project, NEDs, investors. Finance is tested first so a
+   Finance Director lands in finance rather than director. */
+function titleGroup(title){
+  var t = String(title || "").trim();
+  if (!t) return null;
+  if (T_NED.test(t)) return null;
+  if (T_FIN.test(t)) return T_INVEST.test(t) ? null : "finance";
+  if (T_OPS.test(t)) return T_OPS_NO.test(t) ? null : "operations";
+  /* "President" must not match inside "Vice President" — a VP of EMEA does not
+     own the company. A VP of Finance is already in finance above. */
+  if (T_OWNER.test(t.replace(/\bvice\s+president\b/ig, " ").replace(/\bvp\b/ig, " "))) return "director";
+  if (T_DIR_BARE.test(t)) return "director";
+  return null;
 }
+
 
 function bigCoExclusion(){
   if (!_tax) return null;
@@ -1259,8 +1358,8 @@ function toLushaInput(f, page){
     page: page,
     page_size: 50,
     existing_data_points: ["work_email"],
-    /* Every lead on this desk is UK, so geography is fixed rather than filtered. */
-    companyLocations: [{ country:"United Kingdom" }],
+    /* Geography is the flag tab, not a filter the brief can set. */
+    companyLocations: [{ country: country().name }],
     departments: f.departments.length ? f.departments : undefined,
     seniority: f.seniorityIds.length ? f.seniorityIds : undefined,
     subIndustriesIds: f.subIndustryIds.length ? f.subIndustryIds : undefined,
@@ -1321,12 +1420,14 @@ function runSearch(f, o){
   var page = o.rewind ? 0 : (cur.page || 0);
   var perCo = {}, wrapped = false;
 
-  /* An explicit job-title list is the user overriding the guard on purpose. */
-  var guard = f.titleGuard && !f.jobTitles.length;
+  /* An explicit job-title list is the user overriding the groups on purpose,
+     and clearing every group turns the filtering off entirely. */
+  var groups = f.titleGroups || [];
+  var guard = groups.length > 0 && !f.jobTitles.length;
 
   function consider(r){
     var c = mapContact(r);
-    if (guard && !titleAllowed(c.title)){ S.run.hidTitle++; return; }
+    if (guard && groups.indexOf(titleGroup(c.title)) < 0){ S.run.hidTitle++; return; }
     if (S.ledger.contacted[c.id]){ S.run.hidContacted++; return; }
     if (!S.opts.showSeen && S.ledger.seen[c.id]){ S.run.hidSeen++; return; }
     if (S.opts.newCompaniesOnly && c.companyId && S.ledger.companies[c.companyId]){ S.run.hidCompany++; return; }
@@ -1415,7 +1516,12 @@ function renderList(){
   (f.sizes || []).forEach(function(b){
     row("size", b.max ? b.min + "–" + b.max + " staff" : b.min + "+ staff", "sizes", b.min + "-" + (b.max || ""));
   });
-  if (f.titleGuard && !(f.jobTitles || []).length) row("titles", "Finance & leadership titles only", "titleGuard", "1");
+  if (!(f.jobTitles || []).length){
+    (f.titleGroups || []).forEach(function(g){
+      var d = TITLE_GROUPS.filter(function(x){ return x.id === g; })[0];
+      row("titles", d ? d.label : g, "titleGroups", g);
+    });
+  }
   if (f.excludeLarge) row("skip", "Large corporates (1,001+ staff or $500m+)", "excludeLarge", "1");
 
   $("filter-chips").innerHTML =
@@ -1428,7 +1534,7 @@ function renderList(){
       '<div class="dd-panel" id="sector-panel" hidden>' +
         (rows.length ? '<div class="dd-list">' + rows.join("") + '</div>'
                      : '<div class="dd-empty">No filters set — every UK company matches.</div>') +
-        '<div class="dd-foot"><span class="sm">United Kingdom only</span>' +
+        '<div class="dd-foot"><span class="sm">' + esc(country().name) + ' only</span>' +
         '<button type="button" id="dd-edit">Edit filters</button></div>' +
       '</div>' +
     '</div>' +
@@ -1543,7 +1649,9 @@ function bindListOnce(){
     if (d){
       var key = d.getAttribute("data-drop"), val = d.getAttribute("data-val");
       if (key === "excludeLarge") S.filters.excludeLarge = false;
-      else if (key === "titleGuard") S.filters.titleGuard = false;
+      else if (key === "titleGroups"){
+        S.filters.titleGroups = (S.filters.titleGroups || []).filter(function(g){ return g !== val; });
+      }
       else if (key === "sizes"){
         S.filters.sizes = (S.filters.sizes || []).filter(function(b){
           return b.min + "-" + (b.max || "") !== val;

@@ -28,8 +28,17 @@ Published at: https://claude.ai/artifact/TxU8km8LcENoXXxpgk1zgK
 
 ## Search criteria
 
-Every search is United Kingdom only — geography is fixed in `toLushaInput`, not a
-filter, since no lead on this desk is outside the UK.
+Two markets, switched by the flag tabs in the header: **United Kingdom** and
+**United Arab Emirates**. Geography is set by the tab in `toLushaInput`, never by the
+brief — the parser is told the country and instructed not to return one. The choice
+persists in `localStorage`, and the country is part of the query fingerprint, so each
+market keeps its own page cursor and neither loses its place when you switch.
+Switching mid-search re-runs the current filters against the other country.
+
+The seen/contacted ledger is deliberately *not* per-country: a person is a person, and
+someone already approached should not resurface under the other flag.
+
+Live check under identical criteria: UK 943 matches, UAE 1,725.
 
 Large corporates are excluded by default: anyone at a company Lusha lists at 1,001+
 staff or USD 500m+ revenue. Those are the nearest band boundaries below the intended
@@ -48,21 +57,31 @@ and MAG Airports while keeping Titan Airways, AerFin and Dunlop Aircraft Tyres.
 Departments are limited to **Finance**, **General Management** and **Operations** —
 Lusha's other thirteen are not offered, since nobody in them buys a facility.
 
-Those three still carry plenty of non-buyers, so a title guard runs over every result
-(default on, and off automatically when exact titles are given):
+Those three departments still carry plenty of non-buyers, so every result is sorted
+into one of three professions and anything that fits none of them is dropped. Each
+group is independently toggleable:
 
-| Kept | Dropped |
+| Group | Keeps |
 |---|---|
-| CFO, Finance/Financial Director, Head of Finance, Financial Controller, Treasurer, Head of Treasury, Accounts, FP&A | Investment Director and other investor roles |
-| Founder, Co-Founder, CEO, Chief Executive, Managing Director, Owner, President | Non-Executive Director, Vice President of *anything* non-finance |
-| COO, Chief Operating Officer, Operations Director, Director of Manufacturing and Operations | Procurement, Supply Chain, Commercial, Strategy, Project, Manufacturing Director |
+| **Finance** | CFO, finance/financial director, head of finance, controller, treasurer, head of treasury, accounts, FP&A |
+| **Director** | MD, group MD, managing partner, CEO, chief executive, founder, co-founder, owner, proprietor, president, and plain "Director" with no function in front of it |
+| **Operations** | COO, chief operating officer, operations director, head of operations, director of manufacturing and operations |
 
-Managing Director is kept deliberately: in a UK SME it is the CEO, and dropping it
-would lose most of the market.
+Dropped entirely: procurement, supply chain, commercial, strategy, project,
+manufacturing director, non-executive director, investor roles, and any VP of
+something non-finance.
 
-The guard runs client-side during the page walk, so it costs no credits — the walker
-simply reads further until it has a full run of on-target people. Verified against 40
-real titles pulled from a live search: 21/21 kept correctly, 19/19 dropped correctly.
+Order matters — finance is tested first, so a *Finance Director* lands in finance
+rather than director, and an *Operations Director* in operations. Clearing all three
+groups turns the filtering off; naming exact titles overrides it for that search.
+
+Managing Director is kept deliberately: in a UK or Gulf SME it is the CEO, and
+dropping it would lose most of the market.
+
+The grouping runs client-side during the page walk, so it costs no credits — the
+walker simply reads further until it has a full run of on-target people. Verified
+against 48 job titles taken from live UK and UAE searches: all 48 classified
+correctly.
 
 ### Lusha filters that silently return zero
 
