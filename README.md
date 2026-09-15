@@ -26,6 +26,38 @@ Published at: https://claude.ai/artifact/TxU8km8LcENoXXxpgk1zgK
 | **4. Message** | `sample.json` drafts subject + body with `{{firstName}}`-style merge tokens; live per-recipient preview | Claude usage |
 | **5. Send** | `create_draft` or `send_message`, one call per recipient, 900 ms apart | — |
 
+## Search criteria
+
+Every search is United Kingdom only — geography is fixed in `toLushaInput`, not a
+filter, since no lead on this desk is outside the UK.
+
+Large corporates are excluded by default: anyone at a company Lusha lists at 1,001+
+staff or USD 500m+ revenue. Those are the nearest band boundaries below the intended
+750-staff / £550m line — Lusha matches its own bands and cannot cut mid-band — and
+the revenue side is USD, so £550m sits inside the 500m-1bn band either way. The
+exclusion uses Lusha's `exclude` block rather than a positive size filter, so
+companies with no size or revenue on file are **kept** rather than silently dropped;
+`exclude` only removes known matches. Toggleable per search.
+
+Live check on UK aviation and aerospace finance decision-makers: 943 matches
+unfiltered, 370 with the exclusion on, dropping BAE Systems, QinetiQ, Smiths Group
+and MAG Airports while keeping Titan Airways, AerFin and Dunlop Aircraft Tyres.
+
+### Lusha filters that silently return zero
+
+Three filters return an empty result set rather than an error when given values
+Lusha does not recognise. All three were reachable from the UI and all three are now
+fixed:
+
+| Filter | Wrong value | Result | Correct form |
+|---|---|---|---|
+| `keywords` | `["importer"]` | **0** (vs 943) | not used at all — sector belongs in `subIndustriesIds` |
+| `sizesFilterOption` | `{min:50,max:500}` | **0** | Lusha's own bands, e.g. `{min:51,max:200}` |
+| `exclude.companies` | `{employeesInLinkedIn:{min:750}}` | **0** | band-aligned `sizes` / `revenues` arrays |
+
+The brief parser is instructed never to invent a band, and any band it returns that
+is not in the live list is dropped before the search runs.
+
 ## Never showing the same lead twice
 
 Re-running a brief used to refetch pages 0 and 1 and hand back an identical list.

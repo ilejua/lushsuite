@@ -138,11 +138,11 @@ main{max-width:1180px; margin:0 auto; padding:0 20px 88px}
   min-height:104px; color:var(--ink);
 }
 .composer textarea:focus{outline:none}
-.ghost{
+.typed-hint{
   position:absolute; inset:20px 58px 22px 22px; z-index:0; pointer-events:none;
   font-size:16px; line-height:1.55; color:var(--ink-3);
 }
-.ghost[hidden]{display:none}
+.typed-hint[hidden]{display:none}
 .caret{
   display:inline-block; width:1.5px; height:1.05em; vertical-align:-.18em;
   margin-left:1px; background:var(--elegant-blue); animation:blink 1.05s steps(1) infinite;
@@ -236,6 +236,46 @@ main{max-width:1180px; margin:0 auto; padding:0 20px 88px}
 .chip button:hover{opacity:1}
 .chip.add{background:none;color:var(--ink-3);border-style:dashed;cursor:pointer;padding:3px 9px}
 .chip.add:hover{color:var(--accent);border-color:var(--accent)}
+
+/* Sector dropdown — every active filter in one place, each removable */
+.dd{position:relative}
+.dd .caretdown{opacity:.55;margin-left:1px}
+#sector-btn b{
+  background:var(--accent-wash); color:var(--accent); border-radius:999px;
+  padding:1px 7px; font-size:11.5px; font-weight:600;
+}
+.dd-panel{
+  position:absolute; top:calc(100% + 6px); left:0; z-index:40; min-width:308px;
+  max-width:min(94vw,400px); background:var(--raised); border:1px solid var(--rule);
+  border-radius:10px; box-shadow:0 18px 44px -20px rgba(35,31,32,.42);
+  overflow:hidden;
+}
+.dd-panel[hidden]{display:none}
+.dd-list{max-height:min(52vh,352px);overflow-y:auto;padding:5px}
+.dd-row{
+  display:flex; align-items:center; gap:9px; padding:7px 8px 7px 10px;
+  border-radius:6px; font-size:13.5px;
+}
+.dd-row:hover{background:var(--surface)}
+.dd-row k{
+  font-family:"Roboto Mono",monospace; font-size:10px; letter-spacing:.08em;
+  text-transform:uppercase; color:var(--ink-3); flex:none; width:44px;
+}
+.dd-row span{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dd-row button{
+  background:none;border:0;cursor:pointer;color:var(--ink-3);font-size:15px;
+  line-height:1;padding:2px 5px;border-radius:4px;flex:none;
+}
+.dd-row button:hover{color:var(--crit);background:var(--crit-wash)}
+.dd-empty{padding:18px 14px;font-size:13px;color:var(--ink-3);text-align:center}
+.dd-foot{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:9px 12px;border-top:1px solid var(--rule-2);background:var(--surface);
+}
+.dd-foot button{
+  background:none;border:0;cursor:pointer;color:var(--accent);
+  font-size:13px;font-weight:500;padding:0;text-decoration:underline;
+}
 
 /* coverage strip — what this run skipped and why */
 .coverage{
@@ -384,7 +424,7 @@ dialog::backdrop{background:rgba(10,12,14,.55)}
       <p class="sub">Describe who you want to reach. It resolves into a Lusha search, reveals verified work emails, and drafts the approach.</p>
 
       <div class="composer" id="composer">
-        <div class="ghost" id="ghost" aria-hidden="true"><span id="ghost-text"></span><i class="caret"></i></div>
+        <div class="typed-hint" id="ghost" aria-hidden="true"><span id="ghost-text"></span><i class="caret"></i></div>
         <textarea id="brief-text" aria-label="Describe the prospects you want to reach" rows="3"></textarea>
         <button class="send-dot" id="btn-find" type="button" aria-label="Find prospects">
           <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
@@ -392,13 +432,9 @@ dialog::backdrop{background:rgba(10,12,14,.55)}
       </div>
 
       <div class="pills">
-        <button class="pill-btn" id="pill-contact" type="button">
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.4"/><path d="M5.5 20a6.5 6.5 0 0 1 13 0"/></svg>
-          Contact filters
-        </button>
-        <button class="pill-btn" id="pill-company" type="button">
+        <button class="pill-btn" id="pill-sector" type="button">
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="11" height="18" rx="1.4"/><path d="M15 9h5v12h-5M7.5 7h4M7.5 11h4M7.5 15h4"/></svg>
-          Company filters
+          Sector
         </button>
         <button class="pill-btn" id="btn-crm" type="button">
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v10m0 0 3.5-3.5M12 13 8.5 9.5M4 16v3.5h16V16"/></svg>
@@ -486,23 +522,11 @@ dialog::backdrop{background:rgba(10,12,14,.55)}
   </section>
 </main>
 
-<dialog id="dlg-contact">
+<dialog id="dlg-sector">
   <form method="dialog" class="dlg">
-    <h3>Contact filters</h3>
-    <p>Search by role directly, without writing a brief. Anything set here replaces the contact side of the current search.</p>
-    <div class="scroller" id="contact-body"></div>
-    <div class="dlg-foot">
-      <button class="btn" value="cancel" type="submit">Cancel</button>
-      <button class="btn primary" value="save" type="submit">Search these</button>
-    </div>
-  </form>
-</dialog>
-
-<dialog id="dlg-company">
-  <form method="dialog" class="dlg">
-    <h3>Company filters</h3>
-    <p>Narrow by sector, country and size. Anything set here replaces the company side of the current search.</p>
-    <div class="scroller" id="company-body"></div>
+    <h3>Sector &amp; targeting</h3>
+    <p>Every search is United Kingdom only. Set what you want here and it runs straight away — a written brief is optional.</p>
+    <div class="scroller" id="sector-body"></div>
     <div class="dlg-foot">
       <button class="btn" value="cancel" type="submit">Cancel</button>
       <button class="btn primary" value="save" type="submit">Search these</button>
@@ -646,12 +670,11 @@ function wasContacted(c){
 function sigOf(f){
   var norm = {
     s:(f.subIndustryIds||[]).slice().sort(),
-    c:(f.countries||[]).slice().sort(),
     d:(f.departments||[]).slice().sort(),
     l:(f.seniorityIds||[]).slice().sort(),
     t:(f.jobTitles||[]).slice().sort(),
-    k:(f.keywords||[]).slice().sort(),
-    a:f.sizeMin, b:f.sizeMax
+    z:(f.sizes||[]).map(function(b){ return b.min + "-" + (b.max || ""); }).sort(),
+    x:!!f.excludeLarge
   };
   var str = JSON.stringify(norm), h = 5381;
   for (var i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) | 0;
@@ -882,16 +905,16 @@ function bindStatic(){
   $("composer").addEventListener("click", function(e){
     if (e.target === this || e.target.id === "ghost" || e.target.id === "ghost-text") $("brief-text").focus();
   });
-  $("pill-contact").addEventListener("click", function(){ openFilters("contact"); });
-  $("pill-company").addEventListener("click", function(){ openFilters("company"); });
-  $("dlg-contact").addEventListener("close", function(){ if (this.returnValue === "save") applyFilters("contact"); });
-  $("dlg-company").addEventListener("close", function(){ if (this.returnValue === "save") applyFilters("company"); });
-  [$("dlg-contact"), $("dlg-company")].forEach(function(d){
-    d.addEventListener("change", function(e){
-      var lab = e.target.closest(".opt");
-      if (lab) lab.classList.toggle("on", e.target.checked);
-    });
+  $("pill-sector").addEventListener("click", function(){ openFilters(); });
+  $("dlg-sector").addEventListener("close", function(){ if (this.returnValue === "save") applyFilters(); });
+  $("dlg-sector").addEventListener("change", function(e){
+    var lab = e.target.closest(".opt");
+    if (lab) lab.classList.toggle("on", e.target.checked);
   });
+  document.addEventListener("click", function(e){
+    if (!e.target.closest("#filter-chips")) closeSectorMenu();
+  });
+  document.addEventListener("keydown", function(e){ if (e.key === "Escape") closeSectorMenu(); });
   $("btn-crm").addEventListener("click", function(){
     $("crm-text").value = S.crm.join("\n");
     var seen = ledgerCount(S.ledger.seen), sent = ledgerCount(S.ledger.contacted);
@@ -947,7 +970,15 @@ function briefIdle(){
 
 function startSearch(){
   var text = $("brief-text").value.trim();
-  if (!text){ $("brief-text").focus(); return; }
+  /* Pressing send on an empty box runs the suggestion currently typing itself,
+     rather than appearing to do nothing. */
+  if (!text){
+    var ghost = $("ghost-text");
+    text = ghost && !$("ghost").hidden ? PROMPTS[typer.i] : "";
+    if (!text){ $("brief-text").focus(); return; }
+    $("brief-text").value = text;
+    syncGhost();
+  }
   if (!mcp){ return; }
   S.brief = text;
   $("brief-error").innerHTML = "";
@@ -981,12 +1012,16 @@ function taxonomies(){
   return Promise.all([
     readOnce(LUSHA, "prospecting_company_filters", { type:"industries_labels" }),
     readOnce(LUSHA, "prospecting_contact_filters", { type:"seniority" }),
-    readOnce(LUSHA, "prospecting_contact_filters", { type:"departments" })
+    readOnce(LUSHA, "prospecting_contact_filters", { type:"departments" }),
+    readOnce(LUSHA, "prospecting_company_filters", { type:"sizes" }),
+    readOnce(LUSHA, "prospecting_company_filters", { type:"revenues" })
   ]).then(function(r){
     _tax = {
       industries: (r[0] && r[0].values) || [],
       seniority: (r[1] && r[1].values) || [],
-      departments: (r[2] && r[2].values) || []
+      departments: (r[2] && r[2].values) || [],
+      sizes: (r[3] && r[3].values) || [],
+      revenues: (r[4] && r[4].values) || []
     };
     return _tax;
   }).catch(function(e){ e.__server = LUSHA; throw e; });
@@ -998,40 +1033,46 @@ function parseBrief(text, tax){
     e.__page = true; return Promise.reject(e);
   }
   var industryLines = tax.industries.map(function(m){
-    return m.main_industry + ": " + m.sub_industries.map(function(s){ return s.value + "=" + s.id; }).join(", ");
+    return m.main_industry + ": " + m.sub_industries.map(function(sub){ return sub.value + "=" + sub.id; }).join(", ");
   }).join("\n");
-  var seniorityLine = tax.seniority.map(function(s){ return s.name + "=" + s.id; }).join(", ");
+  var seniorityLine = tax.seniority.map(function(v){ return v.name + "=" + v.id; }).join(", ");
+  var sizeLine = tax.sizes.map(function(b){ return b.min + "-" + (b.max || "plus"); }).join(", ");
 
   var prompt =
     "You turn a B2B sales brief into a Lusha prospecting filter set. Reply with ONLY a JSON object.\n\n" +
     "BRIEF:\n" + text + "\n\n" +
     "AVAILABLE SUB-INDUSTRIES (name=id):\n" + industryLines + "\n\n" +
     "SENIORITY (name=id): " + seniorityLine + "\n" +
-    "DEPARTMENTS: " + tax.departments.join(", ") + "\n\n" +
+    "DEPARTMENTS: " + tax.departments.join(", ") + "\n" +
+    "HEADCOUNT BUCKETS: " + sizeLine + "\n\n" +
     "Rules:\n" +
+    "- Every search is United Kingdom only. Do not return a country.\n" +
     "- subIndustryIds: pick every sub-industry id the brief plausibly covers. Include adjacent ones (an 'aviation' brief covers both air services and aerospace manufacturing). Empty array if the brief names no sector.\n" +
-    "- countries: full country names as written in the brief, e.g. [\"United Kingdom\"]. Default to [\"United Kingdom\"] if none is named.\n" +
     "- departments: only from the DEPARTMENTS list. A brief about finance/treasury/trade finance buyers means [\"Finance\"].\n" +
     "- seniorityIds: ids from SENIORITY. Decision-maker briefs usually mean c-suite, vice president and director.\n" +
     "- jobTitles: free-text titles worth targeting, at most 8, only if the brief implies specific roles.\n" +
-    "- sizeMin/sizeMax: employee headcount bounds, or null.\n" +
-    "- keywords: at most 5 company keywords, only when the brief names a real business characteristic (e.g. \"importer\"). Otherwise [].\n" +
+    "- sizes: only when the brief states a company size. Return whole buckets from HEADCOUNT BUCKETS that cover the stated range, as {min,max} objects, max omitted for the open-ended top bucket. A brief saying '50-500 staff' means [{\"min\":51,\"max\":200},{\"min\":201,\"max\":500}]. Otherwise [].\n" +
+    "- Never invent a headcount range of your own: a bucket that is not in the list returns no results at all.\n" +
+    "- Descriptive words about what a business does ('importer', 'exporter', 'wholesaler') belong in subIndustryIds, never as a separate keyword.\n" +
     "- summary: one short sentence, max 15 words, describing who this finds.\n\n" +
-    'Shape: {"subIndustryIds":[130],"countries":["United Kingdom"],"departments":["Finance"],' +
-    '"seniorityIds":[9,8,6],"jobTitles":["Chief Financial Officer"],"sizeMin":null,"sizeMax":null,' +
-    '"keywords":[],"summary":"UK aviation finance decision makers"}';
+    'Shape: {"subIndustryIds":[130],"departments":["Finance"],"seniorityIds":[9,8,6],' +
+    '"jobTitles":["Chief Financial Officer"],"sizes":[{"min":51,"max":200}],"summary":"UK aviation finance decision makers"}';
 
   return sampler.json(prompt, { modelTier:"default" }).then(function(f){
     f = f || {};
+    var valid = {};
+    tax.sizes.forEach(function(b){ valid[b.min + "-" + (b.max || "")] = b; });
     return {
       subIndustryIds: Array.isArray(f.subIndustryIds) ? f.subIndustryIds.map(Number).filter(function(n){ return !isNaN(n); }).slice(0,100) : [],
-      countries: Array.isArray(f.countries) && f.countries.length ? f.countries.map(String).slice(0,10) : ["United Kingdom"],
       departments: Array.isArray(f.departments) ? f.departments.map(String).slice(0,16) : [],
       seniorityIds: Array.isArray(f.seniorityIds) ? f.seniorityIds.map(Number).filter(function(n){ return !isNaN(n); }) : [],
       jobTitles: Array.isArray(f.jobTitles) ? f.jobTitles.map(String).slice(0,8) : [],
-      sizeMin: typeof f.sizeMin === "number" ? f.sizeMin : null,
-      sizeMax: typeof f.sizeMax === "number" ? f.sizeMax : null,
-      keywords: Array.isArray(f.keywords) ? f.keywords.map(String).slice(0,5) : [],
+      /* Anything that is not one of Lusha's own buckets is dropped rather than
+         sent — an invented range silently returns zero results. */
+      sizes: Array.isArray(f.sizes)
+        ? f.sizes.map(function(b){ return valid[Number(b && b.min) + "-" + (b && b.max ? Number(b.max) : "")]; }).filter(Boolean)
+        : [],
+      excludeLarge: true,
       summary: typeof f.summary === "string" ? f.summary : ""
     };
   }).catch(function(err){
@@ -1039,87 +1080,92 @@ function parseBrief(text, tax){
               rate_limited:"Claude is rate-limited right now. Give it a minute and try again.",
               invalid_json:"Claude's answer didn't come back as a filter set. Try rewording the brief a little.",
               refused:"Claude declined to read that brief. Try describing the sector and roles more plainly." };
-    var e = new Error(m[err && err.code] || "Couldn't turn that brief into a search. Try rewording it.");
-    e.__page = true; throw e;
+    var e2 = new Error(m[err && err.code] || "Couldn't turn that brief into a search. Try rewording it.");
+    e2.__page = true; throw e2;
   });
 }
 
-/* ---- the filter pills: search by structured criteria, no brief needed ---- */
 function blankFilters(){
-  return { subIndustryIds:[], countries:["United Kingdom"], departments:["Finance"],
-           seniorityIds:[9,8,6], jobTitles:[], sizeMin:null, sizeMax:null, keywords:[], summary:"" };
+  return { subIndustryIds:[], departments:["Finance"], seniorityIds:[9,8,6],
+           jobTitles:[], sizes:[], excludeLarge:true, summary:"" };
 }
 function optHTML(attr, val, label, on){
   return '<label class="opt' + (on ? " on" : "") + '"><input type="checkbox" data-' + attr +
          '="' + esc(String(val)) + '"' + (on ? " checked" : "") + '>' + esc(label) + '</label>';
 }
-function openFilters(kind){
-  var dlg = $(kind === "contact" ? "dlg-contact" : "dlg-company");
-  var body = $(kind === "contact" ? "contact-body" : "company-body");
+function openFilters(){
+  var dlg = $("dlg-sector"), body = $("sector-body");
+  closeSectorMenu();
   body.innerHTML = '<p class="sm"><span class="spin" style="display:inline-block;vertical-align:-2px;margin-right:7px"></span>Loading Lusha\'s filter values…</p>';
   dlg.showModal();
 
   taxonomies().then(function(tax){
-    var f = S.filters || blankFilters();
-    var h = "";
-    if (kind === "contact"){
-      h += '<div class="fset"><h4>Seniority</h4><div class="opts">' +
-        tax.seniority.map(function(v){
-          return optHTML("sen", v.id, v.name, f.seniorityIds.indexOf(v.id) >= 0);
+    var f = S.filters || blankFilters(), h = "";
+
+    h += '<div class="fset"><h4>Sector</h4>' + tax.industries.map(function(m){
+      return '<div class="grp"><span>' + esc(m.main_industry) + '</span><div class="opts">' +
+        m.sub_industries.map(function(sub){
+          return optHTML("ind", sub.id, sub.value, f.subIndustryIds.indexOf(sub.id) >= 0);
         }).join("") + '</div></div>';
-      h += '<div class="fset"><h4>Department</h4><div class="opts">' +
-        tax.departments.map(function(d){
-          return optHTML("dept", d, d, f.departments.indexOf(d) >= 0);
-        }).join("") + '</div></div>';
-      h += '<div class="fset"><h4>Job titles</h4>' +
-        '<input id="f-titles" type="text" autocomplete="off" placeholder="Chief Financial Officer, Group Treasurer" value="' +
-        esc(f.jobTitles.join(", ")) + '" style="width:100%;background:var(--raised);border:1px solid var(--rule);border-radius:2px;padding:9px 11px">' +
-        '<div class="sm" style="margin-top:5px">Comma separated. Leave blank to match any title at the seniorities above.</div></div>';
-    } else {
-      h += '<div class="fset"><h4>Country</h4>' +
-        '<input id="f-country" type="text" autocomplete="off" value="' + esc(f.countries.join(", ")) +
-        '" style="width:100%;background:var(--raised);border:1px solid var(--rule);border-radius:2px;padding:9px 11px">' +
-        '<div class="sm" style="margin-top:5px">Comma separated, as Lusha spells them — e.g. United Kingdom, Ireland.</div></div>';
-      h += '<div class="fset"><h4>Headcount</h4><div class="row2">' +
-        '<label class="field"><span class="sm">Minimum</span><input id="f-min" type="number" min="0" value="' + (f.sizeMin == null ? "" : f.sizeMin) + '"></label>' +
-        '<label class="field"><span class="sm">Maximum</span><input id="f-max" type="number" min="0" value="' + (f.sizeMax == null ? "" : f.sizeMax) + '"></label>' +
-        '</div></div>';
-      h += '<div class="fset"><h4>Industry</h4>' + tax.industries.map(function(m){
-        return '<div class="grp"><span>' + esc(m.main_industry) + '</span><div class="opts">' +
-          m.sub_industries.map(function(sub){
-            return optHTML("ind", sub.id, sub.value, f.subIndustryIds.indexOf(sub.id) >= 0);
-          }).join("") + '</div></div>';
-      }).join("") + '</div>';
-    }
+    }).join("") + '</div>';
+
+    h += '<div class="fset"><h4>Seniority</h4><div class="opts">' +
+      tax.seniority.map(function(v){
+        return optHTML("sen", v.id, v.name, f.seniorityIds.indexOf(v.id) >= 0);
+      }).join("") + '</div></div>';
+
+    h += '<div class="fset"><h4>Department</h4><div class="opts">' +
+      tax.departments.map(function(d){
+        return optHTML("dept", d, d, f.departments.indexOf(d) >= 0);
+      }).join("") + '</div></div>';
+
+    h += '<div class="fset"><h4>Company size</h4><div class="opts">' +
+      tax.sizes.map(function(b){
+        var key = b.min + "-" + (b.max || "");
+        var on = f.sizes.some(function(x){ return x.min === b.min && (x.max || "") === (b.max || ""); });
+        return optHTML("size", key, b.max ? (b.min + "–" + b.max) : (b.min + "+"), on);
+      }).join("") + '</div>' +
+      '<div class="sm" style="margin-top:6px">Leave all clear for any size. Lusha only matches these bands, so a band of your own returns nothing.</div></div>';
+
+    h += '<div class="fset"><h4>Job titles</h4>' +
+      '<input id="f-titles" type="text" autocomplete="off" placeholder="Chief Financial Officer, Group Treasurer" value="' +
+      esc(f.jobTitles.join(", ")) + '" style="width:100%;background:var(--raised);border:1px solid var(--rule);border-radius:2px;padding:9px 11px">' +
+      '<div class="sm" style="margin-top:5px">Comma separated. Blank matches any title at the seniorities above.</div></div>';
+
+    h += '<div class="fset"><h4>Out of criteria</h4>' +
+      '<label class="opt' + (f.excludeLarge ? " on" : "") + '" style="font-size:13.5px">' +
+      '<input type="checkbox" id="f-bigco"' + (f.excludeLarge ? " checked" : "") + '>Skip large corporates</label>' +
+      '<div class="sm" style="margin-top:6px">Drops anyone at a company Lusha lists at <b>1,001+ staff</b> or <b>$500m+ revenue</b> (about £395m). ' +
+      'Those are the nearest bands below your 750-staff / £550m line — Lusha cannot cut mid-band. ' +
+      'Companies with no size or revenue on file are kept.</div></div>';
+
     body.innerHTML = h;
   }).catch(function(e){
     body.innerHTML = noticeHTML("bad", "Couldn't load the filter values",
       "<p style='margin:0'>" + esc(explain(e, LUSHA)) + "</p>");
   });
 }
-function applyFilters(kind){
-  var body = $(kind === "contact" ? "contact-body" : "company-body");
-  var f = S.filters || blankFilters();
+
+function applyFilters(){
+  var body = $("sector-body"), f = S.filters || blankFilters();
   function picked(attr){
     return Array.prototype.map.call(body.querySelectorAll("[data-" + attr + "]:checked"),
       function(el){ return el.getAttribute("data-" + attr); });
   }
-  function csv(id){
-    var el = $(id);
-    return el ? el.value.split(",").map(function(t){ return t.trim(); }).filter(Boolean) : [];
-  }
-  if (kind === "contact"){
-    f.seniorityIds = picked("sen").map(Number);
-    f.departments = picked("dept");
-    f.jobTitles = csv("f-titles").slice(0, 8);
-  } else {
-    f.subIndustryIds = picked("ind").map(Number);
-    var c = csv("f-country");
-    f.countries = c.length ? c : ["United Kingdom"];
-    var mn = $("f-min"), mx = $("f-max");
-    f.sizeMin = mn && mn.value !== "" ? Number(mn.value) : null;
-    f.sizeMax = mx && mx.value !== "" ? Number(mx.value) : null;
-  }
+  f.subIndustryIds = picked("ind").map(Number);
+  f.seniorityIds = picked("sen").map(Number);
+  f.departments = picked("dept");
+  f.sizes = picked("size").map(function(k){
+    var parts = k.split("-");
+    var b = { min: Number(parts[0]) };
+    if (parts[1] !== "") b.max = Number(parts[1]);
+    return b;
+  });
+  var t = $("f-titles");
+  f.jobTitles = t ? t.value.split(",").map(function(x){ return x.trim(); }).filter(Boolean).slice(0, 8) : [];
+  var big = $("f-bigco");
+  f.excludeLarge = big ? big.checked : true;
+
   f.summary = describeFilters(f);
   S.filters = f;
   if (!S.brief) S.brief = f.summary;
@@ -1133,6 +1179,7 @@ function applyFilters(kind){
       "<p style='margin:0'>" + esc(explain(e, LUSHA)) + "</p>");
   });
 }
+
 /* A readable sentence for a filter-built search, so the email drafter still has
    something to work from when no brief was typed. */
 function describeFilters(f){
@@ -1144,10 +1191,28 @@ function describeFilters(f){
   });
   var who = f.jobTitles.length ? f.jobTitles.join(", ")
           : (f.departments.join(" and ") || "senior") + " decision makers";
-  var size = f.sizeMin != null || f.sizeMax != null
-    ? " with " + (f.sizeMin || 0) + "-" + (f.sizeMax || "any") + " staff" : "";
-  return who + " at " + (sectors.length ? sectors.slice(0, 4).join(", ") : "companies") +
-         " businesses in " + f.countries.join(" and ") + size + ".";
+  var size = f.sizes.length
+    ? " with " + f.sizes.map(function(b){ return b.max ? b.min + "-" + b.max : b.min + "+"; }).join(" or ") + " staff"
+    : "";
+  return who + " at " + (sectors.length ? sectors.slice(0, 4).join(", ") : "") +
+         " businesses in the UK" + size + ".";
+}
+
+/* Out of criteria for this desk: companies big enough to have their own treasury
+   team and a bank panel. Lusha only matches its own buckets, so the cut lands on
+   the nearest boundaries below — 1,001+ staff, or USD 500m+ revenue. Companies
+   with no size or revenue on file are kept, since exclude only drops known
+   matches. */
+var BIG_STAFF = 1001, BIG_REV = 500000000;
+function bigCoExclusion(){
+  if (!_tax) return null;
+  var rev = (_tax.revenues || []).filter(function(b){ return b.min >= BIG_REV; });
+  var siz = (_tax.sizes || []).filter(function(b){ return b.min >= BIG_STAFF; });
+  if (!rev.length && !siz.length) return null;
+  var c = {};
+  if (rev.length) c.revenues = rev;
+  if (siz.length) c.sizes = siz;
+  return { companies: c };
 }
 
 function toLushaInput(f, page){
@@ -1155,19 +1220,16 @@ function toLushaInput(f, page){
     page: page,
     page_size: 50,
     existing_data_points: ["work_email"],
+    /* Every lead on this desk is UK, so geography is fixed rather than filtered. */
+    companyLocations: [{ country:"United Kingdom" }],
     departments: f.departments.length ? f.departments : undefined,
     seniority: f.seniorityIds.length ? f.seniorityIds : undefined,
     subIndustriesIds: f.subIndustryIds.length ? f.subIndustryIds : undefined,
-    companyLocations: f.countries.map(function(c){ return { country: c }; }),
     jobTitles: f.jobTitles.length ? f.jobTitles : undefined,
-    keywords: f.keywords.length ? f.keywords : undefined
+    /* Only Lusha's own headcount buckets match; arbitrary bounds return nothing. */
+    sizesFilterOption: f.sizes.length ? f.sizes : undefined,
+    exclude: f.excludeLarge ? (bigCoExclusion() || undefined) : undefined
   };
-  if (f.sizeMin != null || f.sizeMax != null){
-    var r = {};
-    if (f.sizeMin != null) r.min = f.sizeMin;
-    if (f.sizeMax != null) r.max = f.sizeMax;
-    q.sizesFilterOption = [r];
-  }
   Object.keys(q).forEach(function(k){ if (q[k] === undefined) delete q[k]; });
   return q;
 }
@@ -1272,6 +1334,11 @@ function runSearch(f, o){
 /* ============================================================
    Stage 2 — the list
    ============================================================ */
+function closeSectorMenu(){
+  var pnl = $("sector-panel"), btn = $("sector-btn");
+  if (pnl && !pnl.hidden){ pnl.hidden = true; if (btn) btn.setAttribute("aria-expanded", "false"); }
+}
+
 function renderList(){
   var l = live(), sel = chosen(), withMail = sel.filter(function(c){ return c.email; }).length;
   var excluded = S.contacts.filter(isExcluded).length;
@@ -1280,28 +1347,45 @@ function renderList(){
     '<b>' + l.length + '</b> shown of ' + S.total.toLocaleString("en-GB") + ' matches · ' +
     '<b>' + sel.length + '</b> selected · <b>' + withMail + '</b> with an email';
 
-  // filter chips
-  var f = S.filters || {}, chips = [];
-  function chip(k, v, key, val){
-    chips.push('<span class="chip"><k>' + esc(k) + '</k>' + esc(v) +
-      '<button type="button" data-drop="' + key + '" data-val="' + esc(String(val)) + '" aria-label="Remove ' + esc(v) + '">×</button></span>');
+  // one Sector control listing every active filter, each removable
+  var f = S.filters || {}, rows = [];
+  function row(kind, label, key, val){
+    rows.push('<div class="dd-row"><k>' + esc(kind) + '</k><span>' + esc(label) + '</span>' +
+      '<button type="button" data-drop="' + key + '" data-val="' + esc(String(val)) +
+      '" aria-label="Remove ' + esc(label) + '">×</button></div>');
   }
-  (f.countries || []).forEach(function(c){ chip("geo", c, "countries", c); });
-  (f.departments || []).forEach(function(d){ chip("dept", d, "departments", d); });
-  (f.seniorityIds || []).forEach(function(id){
-    var n = (_tax ? _tax.seniority : []).filter(function(s){ return s.id === id; })[0];
-    chip("level", n ? n.name : String(id), "seniorityIds", id);
-  });
   (f.subIndustryIds || []).forEach(function(id){
     var nm = "";
     ((_tax && _tax.industries) || []).forEach(function(m){
-      m.sub_industries.forEach(function(s){ if (s.id === id) nm = s.value; });
+      m.sub_industries.forEach(function(sub){ if (sub.id === id) nm = sub.value; });
     });
-    chip("sector", nm || String(id), "subIndustryIds", id);
+    row("sector", nm || String(id), "subIndustryIds", id);
   });
-  (f.jobTitles || []).forEach(function(t){ chip("title", t, "jobTitles", t); });
-  (f.keywords || []).forEach(function(t){ chip("keyword", t, "keywords", t); });
-  $("filter-chips").innerHTML = chips.join("") +
+  (f.seniorityIds || []).forEach(function(id){
+    var n = ((_tax && _tax.seniority) || []).filter(function(v){ return v.id === id; })[0];
+    row("level", n ? n.name : String(id), "seniorityIds", id);
+  });
+  (f.departments || []).forEach(function(d){ row("dept", d, "departments", d); });
+  (f.jobTitles || []).forEach(function(t){ row("title", t, "jobTitles", t); });
+  (f.sizes || []).forEach(function(b){
+    row("size", b.max ? b.min + "–" + b.max + " staff" : b.min + "+ staff", "sizes", b.min + "-" + (b.max || ""));
+  });
+  if (f.excludeLarge) row("skip", "Large corporates (1,001+ staff or $500m+)", "excludeLarge", "1");
+
+  $("filter-chips").innerHTML =
+    '<div class="dd">' +
+      '<button class="pill-btn" id="sector-btn" type="button" aria-expanded="false">' +
+        '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="11" height="18" rx="1.4"/><path d="M15 9h5v12h-5M7.5 7h4M7.5 11h4M7.5 15h4"/></svg>' +
+        'Sector <b class="mono">' + rows.length + '</b>' +
+        '<svg class="caretdown" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>' +
+      '</button>' +
+      '<div class="dd-panel" id="sector-panel" hidden>' +
+        (rows.length ? '<div class="dd-list">' + rows.join("") + '</div>'
+                     : '<div class="dd-empty">No filters set — every UK company matches.</div>') +
+        '<div class="dd-foot"><span class="sm">United Kingdom only</span>' +
+        '<button type="button" id="dd-edit">Edit filters</button></div>' +
+      '</div>' +
+    '</div>' +
     '<button class="chip add" type="button" id="chip-rerun">Find the next ' + TARGET + '</button>';
 
   // coverage strip + notices
@@ -1411,10 +1495,25 @@ function bindListOnce(){
     var d = e.target.closest("[data-drop]");
     if (d){
       var key = d.getAttribute("data-drop"), val = d.getAttribute("data-val");
-      S.filters[key] = (S.filters[key] || []).filter(function(v){ return String(v) !== val; });
+      if (key === "excludeLarge") S.filters.excludeLarge = false;
+      else if (key === "sizes"){
+        S.filters.sizes = (S.filters.sizes || []).filter(function(b){
+          return b.min + "-" + (b.max || "") !== val;
+        });
+      } else {
+        S.filters[key] = (S.filters[key] || []).filter(function(v){ return String(v) !== val; });
+      }
       renderList();
       return;
     }
+    if (e.target.closest("#sector-btn")){
+      var pnl = $("sector-panel"), btn = $("sector-btn");
+      var open = pnl.hidden;
+      pnl.hidden = !open;
+      btn.setAttribute("aria-expanded", String(open));
+      return;
+    }
+    if (e.target.id === "dd-edit"){ openFilters(); return; }
     if (e.target.id === "chip-rerun") rerun();
   });
   $("list-bulk").addEventListener("click", function(e){
