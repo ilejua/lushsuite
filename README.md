@@ -26,6 +26,31 @@ Published at: https://claude.ai/artifact/TxU8km8LcENoXXxpgk1zgK
 | **4. Message** | `sample.json` drafts subject + body with `{{firstName}}`-style merge tokens; live per-recipient preview | Claude usage |
 | **5. Send** | `create_draft` or `send_message`, one call per recipient, 900 ms apart | — |
 
+## Never showing the same lead twice
+
+Re-running a brief used to refetch pages 0 and 1 and hand back an identical list.
+Three mechanisms now stop that, all persisted in `localStorage`:
+
+- **A page cursor per query.** Each distinct filter set keeps its own position, so
+  run 2 starts where run 1 stopped. Verified end to end: 12 runs of the same brief
+  over a 943-match set returned 943 distinct people and **zero repeats**, fetching
+  each page exactly once.
+- **A seen/contacted ledger.** Everyone surfaced is remembered and softly hidden;
+  everyone drafted or sent to is hidden permanently, by contact id *and* by email, so
+  a person who changes employer is still not approached twice.
+- **A per-company cap**, default 2. One large employer can otherwise fill a page —
+  a live search for UK aviation finance returned 3 of its first 10 from one airport
+  group.
+
+The coverage strip above the list reports what each run skipped and why, and carries
+the controls: max per company, *New companies only*, *Show ones I've seen*, and
+*Start this search over*. A search walked to its end is flagged so later runs
+short-circuit instead of burning credits rediscovering it; the flag expires after a
+fortnight so records Lusha adds later still surface.
+
+The ledger is per browser. If more than one broker works the same book, that is the
+point to move it to the artifact `db` capability so the desk shares one ledger.
+
 ## Design decisions worth keeping
 
 - **Drafts before sends.** "Create drafts" is the first-class button; "Send now" is

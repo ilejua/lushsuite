@@ -119,7 +119,7 @@ main{max-width:1180px; margin:0 auto; padding:0 20px 88px}
 .brief{padding:clamp(34px,7vh,76px) 0 40px; position:relative}
 .brief::before{
   content:""; position:absolute; inset:-10% -40% 40%; z-index:-1; pointer-events:none;
-  background:radial-gradient(58% 52% at 50% 28%,color-mix(in srgb,var(--elegant-blue) 30%,transparent),transparent 70%);
+  background:radial-gradient(52% 46% at 50% 34%,color-mix(in srgb,var(--elegant-blue) 20%,transparent),transparent 72%);
   animation:drift 22s ease-in-out infinite alternate;
 }
 @keyframes drift{from{transform:translate3d(-3%,0,0) scale(1)}to{transform:translate3d(3%,2%,0) scale(1.08)}}
@@ -204,14 +204,38 @@ main{max-width:1180px; margin:0 auto; padding:0 20px 88px}
 .chip.add{background:none;color:var(--ink-3);border-style:dashed;cursor:pointer;padding:3px 9px}
 .chip.add:hover{color:var(--accent);border-color:var(--accent)}
 
+/* coverage strip — what this run skipped and why */
+.coverage{
+  display:flex; align-items:center; gap:10px 18px; flex-wrap:wrap;
+  padding:11px 14px; margin:2px 0 12px; font-size:12.5px; color:var(--ink-3);
+  background:var(--surface); border:1px solid var(--rule); border-radius:3px;
+  border-left:3px solid var(--elegant-blue);
+}
+.coverage b{color:var(--ink);font-weight:600}
+.coverage .runno{
+  font-family:"Roboto Mono",monospace; font-size:10.5px; letter-spacing:.09em;
+  text-transform:uppercase; color:var(--accent); background:var(--accent-wash);
+  border-radius:2px; padding:3px 7px; white-space:nowrap;
+}
+.coverage .why{display:flex;gap:14px;flex-wrap:wrap}
+.coverage .why s{text-decoration:none;white-space:nowrap}
+.cov-ctl{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-left:auto}
+.cov-ctl label{display:flex;gap:6px;align-items:center;white-space:nowrap;cursor:pointer}
+.cov-ctl select{
+  background:var(--raised); border:1px solid var(--rule); border-radius:2px;
+  padding:3px 6px; font-size:12.5px; cursor:pointer;
+}
+.cov-ctl .reset{background:none;border:0;color:var(--ink-3);cursor:pointer;text-decoration:underline;padding:0;font-size:12.5px}
+.cov-ctl .reset:hover{color:var(--crit)}
+
 /* ---------- table ---------- */
-.tablewrap{overflow-x:auto; border:1px solid var(--rule); border-radius:3px; background:var(--surface); margin-top:6px}
+.tablewrap{overflow:auto; max-height:min(62vh,620px); overscroll-behavior:contain; border:1px solid var(--rule); border-radius:3px; background:var(--surface); margin-top:6px}
 table{border-collapse:collapse; width:100%; min-width:840px; font-size:13.5px}
 thead th{
-  position:sticky; top:calc(env(safe-area-inset-top,0px) + 53px); z-index:5;
-  background:var(--surface); text-align:left; font-weight:600; font-size:11px;
+  position:sticky; top:0; z-index:5;
+  background:var(--surface); box-shadow:inset 0 -1px 0 var(--rule); text-align:left; font-weight:600; font-size:11px;
   letter-spacing:.09em; text-transform:uppercase; color:var(--ink-3);
-  padding:10px 12px; border-bottom:1px solid var(--rule); white-space:nowrap;
+  padding:10px 12px; white-space:nowrap;
 }
 tbody td{padding:10px 12px; border-bottom:1px solid var(--rule-2); vertical-align:top}
 tbody tr:last-child td{border-bottom:0}
@@ -430,6 +454,7 @@ dialog::backdrop{background:rgba(10,12,14,.55)}
     <h3>CRM exclusions</h3>
     <p>Anyone here is struck from every search — so contacts already on the book never get approached twice. One per line: a full email address, or a domain to exclude the whole company. Kept in this browser only.</p>
     <textarea id="crm-text" placeholder="j.smith@example.co.uk&#10;alreadyaclient.com"></textarea>
+    <p id="ledger-stats" style="margin:14px 0 0;font-size:12.5px"></p>
     <div class="dlg-foot">
       <button class="btn" value="cancel" type="submit">Cancel</button>
       <button class="btn primary" value="save" type="submit" id="crm-save">Save exclusions</button>
@@ -456,8 +481,23 @@ var S = {
   crm: [],                  // exclusion strings
   mail: { subject:"", body:"", sig:"" },
   pvIndex: 0,
-  sending: false
+  sending: false,
+
+  /* The ledger is what stops the same names coming back. It outlives the
+     session in localStorage.
+       seen       — contact ids already put in front of you, softly hidden
+       contacted  — anyone drafted or sent to, hidden for good
+       companies  — company ids already surfaced, for "new companies only"
+       cursors    — per-query page cursor, so run 2 starts where run 1 stopped */
+  ledger: { seen:{}, contacted:{}, companies:{}, cursors:{} },
+  opts: { perCompany:2, showSeen:false, newCompaniesOnly:false },
+  run: { index:1, pages:0, scanned:0, hidSeen:0, hidContacted:0, hidCompany:0, exhausted:false }
 };
+
+var TARGET = 100;     // fresh contacts we try to fill a run with
+var MAX_PAGES = 10;   // page fetches per run before we stop digging
+var LEDGER_CAP = 20000;
+var DONE_TTL = 14*24*3600*1000;   // a spent search re-opens after a fortnight
 
 var mcp = null, sampler = null, bootDone = false;
 var LUSHA = "Lusha", GMAIL = "Gmail";
@@ -493,6 +533,70 @@ function loadSig(){
 function saveSig(){
   try { localStorage.setItem("desk.sig", S.mail.sig); } catch(e){}
 }
+
+/* ---- the ledger ---- */
+function loadLedger(){
+  try {
+    var raw = localStorage.getItem("desk.ledger");
+    var L = raw ? JSON.parse(raw) : null;
+    if (L && typeof L === "object"){
+      S.ledger.seen = L.seen || {};
+      S.ledger.contacted = L.contacted || {};
+      S.ledger.companies = L.companies || {};
+      S.ledger.cursors = L.cursors || {};
+    }
+  } catch(e){}
+}
+/* Ids are stored against a timestamp so the oldest can be dropped once the
+   ledger outgrows localStorage. Contacted ids are never pruned. */
+function prune(map){
+  var keys = Object.keys(map);
+  if (keys.length <= LEDGER_CAP) return map;
+  keys.sort(function(a,b){ return map[a] - map[b]; });
+  var out = {};
+  for (var i = keys.length - LEDGER_CAP; i < keys.length; i++) out[keys[i]] = map[keys[i]];
+  return out;
+}
+function saveLedger(){
+  try {
+    S.ledger.seen = prune(S.ledger.seen);
+    S.ledger.companies = prune(S.ledger.companies);
+    localStorage.setItem("desk.ledger", JSON.stringify(S.ledger));
+  } catch(e){ /* quota: the run still works, it just won't be remembered */ }
+}
+function markSeen(list){
+  var t = Date.now();
+  list.forEach(function(c){
+    S.ledger.seen[c.id] = t;
+    if (c.companyId) S.ledger.companies[c.companyId] = t;
+  });
+  saveLedger();
+}
+function markContacted(c){
+  S.ledger.contacted[c.id] = Date.now();
+  if (c.email) S.ledger.contacted["e:" + c.email.toLowerCase()] = Date.now();
+}
+function wasContacted(c){
+  return !!S.ledger.contacted[c.id] ||
+         !!(c.email && S.ledger.contacted["e:" + c.email.toLowerCase()]);
+}
+/* A stable fingerprint for a filter set, so each distinct search keeps its
+   own page cursor. Editing a filter chip starts a new one. */
+function sigOf(f){
+  var norm = {
+    s:(f.subIndustryIds||[]).slice().sort(),
+    c:(f.countries||[]).slice().sort(),
+    d:(f.departments||[]).slice().sort(),
+    l:(f.seniorityIds||[]).slice().sort(),
+    t:(f.jobTitles||[]).slice().sort(),
+    k:(f.keywords||[]).slice().sort(),
+    a:f.sizeMin, b:f.sizeMax
+  };
+  var str = JSON.stringify(norm), h = 5381;
+  for (var i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) | 0;
+  return "q" + (h >>> 0).toString(36);
+}
+function ledgerCount(map){ return Object.keys(map).length; }
 /* A contact is excluded when its email matches, or its company domain matches. */
 function isExcluded(c){
   if (!S.crm.length) return false;
@@ -507,7 +611,9 @@ function isExcluded(c){
   return false;
 }
 function live(){
-  return S.contacts.filter(function(c){ return !S.removed[c.id] && !isExcluded(c); });
+  return S.contacts.filter(function(c){
+    return !S.removed[c.id] && !isExcluded(c) && !wasContacted(c);
+  });
 }
 function chosen(){
   return live().filter(function(c){ return S.selected[c.id]; });
@@ -566,6 +672,7 @@ function readOnce(server, tool, input){
 function boot(){
   loadCRM();
   loadSig();
+  loadLedger();
   if (!S.mail.sig){
     S.mail.sig = "Kayln Stock\nFX & Trade Finance\n\n—\nYou're receiving this because of your role in finance at {{company}}. Reply \"no thanks\" and I won't contact you again.";
   }
@@ -664,7 +771,19 @@ function bindStatic(){
   });
   $("btn-crm").addEventListener("click", function(){
     $("crm-text").value = S.crm.join("\n");
+    var seen = ledgerCount(S.ledger.seen), sent = ledgerCount(S.ledger.contacted);
+    $("ledger-stats").innerHTML =
+      'Separately, the desk remembers <b>' + seen + '</b> contact' + (seen === 1 ? "" : "s") +
+      ' it has shown you and <b>' + sent + '</b> you have emailed, and keeps them out of new searches. ' +
+      '<button type="button" class="reset" id="wipe-ledger" style="background:none;border:0;color:var(--crit);text-decoration:underline;cursor:pointer;padding:0;font:inherit">Forget all of it</button>';
     $("dlg-crm").showModal();
+  });
+  $("dlg-crm").addEventListener("click", function(e){
+    if (e.target.id !== "wipe-ledger") return;
+    if (!confirm("Forget every contact shown and everyone emailed? Searches will start returning people you have already approached.")) return;
+    S.ledger = { seen:{}, contacted:{}, companies:{}, cursors:{} };
+    saveLedger();
+    e.target.parentNode.innerHTML = "History cleared.";
   });
   $("dlg-crm").addEventListener("close", function(){
     if ($("dlg-crm").returnValue !== "save") return;
@@ -674,6 +793,7 @@ function bindStatic(){
     saveCRM();
     if (S.reached >= 1) renderList();
   });
+  bindListOnce();
   $("btn-back-list").addEventListener("click", function(){ go(1); });
   $("btn-to-send").addEventListener("click", function(){ reach(3); go(3); });
   $("btn-redraft").addEventListener("click", function(){ draftEmail(true); });
@@ -816,37 +936,99 @@ function toLushaInput(f, page){
   return q;
 }
 
-function runSearch(f){
+function mapContact(r){
+  var reveal = (r.canReveal || []).filter(function(x){ return x.field === "emails"; })[0];
+  return {
+    id: r.id,
+    first: r.firstName || "",
+    last: r.lastName || "",
+    title: (r.jobTitle && r.jobTitle.title) || "",
+    seniority: (r.jobTitle && r.jobTitle.seniority) || "",
+    company: (r.company && r.company.name) || "",
+    companyId: (r.company && (r.company.id || r.company.domain)) || "",
+    domain: (r.company && r.company.domain) || "",
+    city: (r.location && r.location.city) || "",
+    country: (r.location && r.location.country) || "",
+    hasEmail: (r.has || []).indexOf("emails") >= 0,
+    revealCost: reveal ? Number(reveal.credits) : null,
+    email: "", emailState: "hidden"
+  };
+}
+
+/* Walks pages from wherever this query left off last time, dropping anyone
+   the ledger has already shown or mailed and capping how many people any one
+   company can contribute, until it has TARGET fresh contacts or runs out. */
+function runSearch(f, o){
+  o = o || {};
+  var sig = sigOf(f);
   S.contacts = []; S.removed = {}; S.selected = {}; S.total = 0;
-  var pages = [0, 1];
-  var chain = Promise.resolve();
-  pages.forEach(function(p){
-    chain = chain.then(function(){
-      if (p > 0 && S.contacts.length >= S.total) return;
-      return call(LUSHA, "prospecting_contact_search", toLushaInput(f, p)).then(function(res){
-        if (!res) return;
-        S.total = (res.pagination && res.pagination.total) || S.contacts.length;
-        (res.results || []).forEach(function(r){
-          var reveal = (r.canReveal || []).filter(function(x){ return x.field === "emails"; })[0];
-          S.contacts.push({
-            id: r.id,
-            first: r.firstName || "",
-            last: r.lastName || "",
-            title: (r.jobTitle && r.jobTitle.title) || "",
-            seniority: (r.jobTitle && r.jobTitle.seniority) || "",
-            company: (r.company && r.company.name) || "",
-            domain: (r.company && r.company.domain) || "",
-            city: (r.location && r.location.city) || "",
-            country: (r.location && r.location.country) || "",
-            hasEmail: (r.has || []).indexOf("emails") >= 0,
-            revealCost: reveal ? Number(reveal.credits) : null,
-            email: "", emailState: "hidden"
-          });
-        });
-      });
+  S.run = { index:1, pages:0, scanned:0, hidSeen:0, hidContacted:0, hidCompany:0, exhausted:false };
+
+  if (o.fresh){
+    delete S.ledger.cursors[sig];
+    Object.keys(S.ledger.seen).forEach(function(k){ delete S.ledger.seen[k]; });
+    Object.keys(S.ledger.companies).forEach(function(k){ delete S.ledger.companies[k]; });
+  }
+  var cur = S.ledger.cursors[sig] || { page:0, runs:0 };
+  S.run.index = (cur.runs || 0) + 1;
+
+  /* A search already walked to its end doesn't get re-scanned — that costs
+     credits to rediscover what the ledger already knows. The flag expires so
+     records Lusha adds later still surface. */
+  if (!o.fresh && !o.rewind && cur.done && (Date.now() - cur.done) < DONE_TTL){
+    S.run.exhausted = true;
+    S.total = cur.total || 0;
+    return Promise.resolve();
+  }
+
+  var page = o.rewind ? 0 : (cur.page || 0);
+  var perCo = {}, wrapped = false;
+
+  function consider(r){
+    var c = mapContact(r);
+    if (S.ledger.contacted[c.id]){ S.run.hidContacted++; return; }
+    if (!S.opts.showSeen && S.ledger.seen[c.id]){ S.run.hidSeen++; return; }
+    if (S.opts.newCompaniesOnly && c.companyId && S.ledger.companies[c.companyId]){ S.run.hidCompany++; return; }
+    var n = perCo[c.companyId] || 0;
+    if (c.companyId && n >= S.opts.perCompany){ S.run.hidCompany++; return; }
+    perCo[c.companyId] = n + 1;
+    S.contacts.push(c);
+  }
+
+  function step(){
+    if (S.contacts.length >= TARGET) return Promise.resolve();
+    if (S.run.pages >= MAX_PAGES) return Promise.resolve();
+    if (S.total && page * 50 >= S.total){
+      /* Cursor already past the end and nothing found yet — go round again from
+         the top, where the ledger does the hiding instead of the cursor. */
+      if (!wrapped && !S.contacts.length){ wrapped = true; page = 0; }
+      else { S.run.exhausted = true; return Promise.resolve(); }
+    }
+    return call(LUSHA, "prospecting_contact_search", toLushaInput(f, page)).then(function(res){
+      S.run.pages++;
+      var rows = (res && res.results) || [];
+      if (res && res.pagination && res.pagination.total) S.total = res.pagination.total;
+      if (!rows.length){ S.run.exhausted = true; return; }
+      S.run.scanned += rows.length;
+      rows.forEach(consider);
+      page++;
+      return step();
     });
-  });
-  return chain.then(function(){
+  }
+
+  return step().then(function(){
+    /* Nothing new, and the only reason is that we'd shown it all before —
+       that is the end of the search, however we got here. */
+    if (!S.contacts.length && (S.run.hidSeen + S.run.hidContacted + S.run.hidCompany)) S.run.exhausted = true;
+    /* Once the deck is spent, wind back to the top: the ledger now does the
+       hiding, and anyone held back by the per-company cap gets a turn. */
+    S.ledger.cursors[sig] = {
+      page: S.run.exhausted ? 0 : page,
+      runs: S.run.index,
+      total: S.total,
+      done: S.run.exhausted ? Date.now() : 0
+    };
+    markSeen(S.contacts);
     S.contacts.forEach(function(c){ if (!isExcluded(c)) S.selected[c.id] = true; });
   }).catch(function(e){ e.__server = LUSHA; throw e; });
 }
@@ -884,13 +1066,42 @@ function renderList(){
   (f.jobTitles || []).forEach(function(t){ chip("title", t, "jobTitles", t); });
   (f.keywords || []).forEach(function(t){ chip("keyword", t, "keywords", t); });
   $("filter-chips").innerHTML = chips.join("") +
-    '<button class="chip add" type="button" id="chip-rerun">Re-run search</button>';
+    '<button class="chip add" type="button" id="chip-rerun">Find the next ' + TARGET + '</button>';
 
-  // notices
-  var nz = "";
+  // coverage strip + notices
+  var r = S.run, why = [];
+  if (r.hidSeen) why.push('<s><b>' + r.hidSeen + '</b> seen before</s>');
+  if (r.hidContacted) why.push('<s><b>' + r.hidContacted + '</b> already contacted</s>');
+  if (r.hidCompany) why.push('<s><b>' + r.hidCompany + '</b> same-company duplicates</s>');
+  var cov =
+    '<div class="coverage">' +
+      '<span class="runno">Run ' + r.index + '</span>' +
+      (r.pages
+        ? '<span>Read <b>' + r.scanned + '</b> records over ' + r.pages + ' page' + (r.pages === 1 ? "" : "s") +
+          ', kept <b>' + S.contacts.length + '</b>' + (r.exhausted ? " — end of this search" : "") + '</span>'
+        : '<span>Every one of this search&#39;s <b>' + S.total.toLocaleString("en-GB") + '</b> matches has already been shown</span>') +
+      (why.length ? '<span class="why">Skipped ' + why.join("") + '</span>' : "") +
+      '<span class="cov-ctl">' +
+        '<label for="cov-per">Max per company' +
+          '<select id="cov-per">' +
+            [1,2,3,5].map(function(n){
+              return '<option value="' + n + '"' + (S.opts.perCompany === n ? " selected" : "") + '>' + n + '</option>';
+            }).join("") +
+          '</select></label>' +
+        '<label for="cov-new"><input type="checkbox" id="cov-new"' + (S.opts.newCompaniesOnly ? " checked" : "") + '>New companies only</label>' +
+        '<label for="cov-seen"><input type="checkbox" id="cov-seen"' + (S.opts.showSeen ? " checked" : "") + '>Show ones I\'ve seen</label>' +
+        '<button class="reset" id="cov-reset" type="button">Start this search over</button>' +
+      '</span>' +
+    '</div>';
+
+  var nz = cov;
   if (excluded) nz += noticeHTML("", excluded + " struck by your CRM exclusions",
     "<p style='margin:0'>They're hidden from this list and can't be mailed. Edit the list from the brief screen.</p>");
-  if (!l.length) nz += noticeHTML("warn", "Nothing came back",
+  if (!l.length && r.exhausted) nz += noticeHTML("warn", "You've worked through this search",
+    "<p style='margin:0'>All " + S.total.toLocaleString("en-GB") + " matches have been shown at least once over " + (r.index - 1) +
+    " previous run" + (r.index === 2 ? "" : "s") + ". Widen the brief, tick <em>Show ones I&#39;ve seen</em> to go round again, " +
+    "or start the search over to forget what it has shown.</p>");
+  else if (!l.length) nz += noticeHTML("warn", "Nothing came back",
     "<p style='margin:0'>Loosen the brief — a narrower sector, a wider seniority range, or drop a filter chip above and re-run.</p>");
   $("list-notices").innerHTML = nz;
 
@@ -937,17 +1148,17 @@ function renderList(){
   bulk += '<span class="count" style="margin-right:4px">' + withMail + ' ready to mail</span>';
   bulk += '<button class="btn primary" id="btn-to-mail" type="button"' + (withMail ? "" : " disabled") + '>Write the approach →</button>';
   $("list-bulk").innerHTML = bulk;
-  bindList();
 }
 
-function bindList(){
-  var all = $("pick-all");
-  if (all) all.addEventListener("change", function(){
-    var on = this.checked;
-    live().forEach(function(c){ S.selected[c.id] = on; });
-    renderList();
-  });
+/* Bound once, on the containers that survive a re-render, so repeated
+   renderList() calls can't stack duplicate handlers. */
+function bindListOnce(){
   $("list-wrap").addEventListener("change", function(e){
+    if (e.target.id === "pick-all"){
+      var on = e.target.checked;
+      live().forEach(function(c){ S.selected[c.id] = on; });
+      return renderList();
+    }
     var cb = e.target.closest("[data-pick]");
     if (!cb) return;
     S.selected[cb.getAttribute("data-pick")] = cb.checked;
@@ -970,27 +1181,40 @@ function bindList(){
     }
     if (e.target.id === "chip-rerun") rerun();
   });
-  var rev = $("btn-reveal");
-  if (rev) rev.addEventListener("click", revealSelected);
-  $("btn-drop-sel").addEventListener("click", function(){
-    chosen().forEach(function(c){ S.removed[c.id] = true; delete S.selected[c.id]; });
-    renderList();
+  $("list-bulk").addEventListener("click", function(e){
+    if (e.target.closest("#btn-reveal")) return revealSelected();
+    if (e.target.closest("#btn-drop-sel")){
+      chosen().forEach(function(c){ S.removed[c.id] = true; delete S.selected[c.id]; });
+      return renderList();
+    }
+    if (e.target.closest("#btn-to-mail")){
+      reach(2); go(2);
+      if (!S.mail.body) draftEmail(false);
+    }
   });
-  var next = $("btn-to-mail");
-  if (next) next.addEventListener("click", function(){
-    reach(2); go(2);
-    if (!S.mail.body) draftEmail(false);
+  $("list-notices").addEventListener("change", function(e){
+    if (e.target.id === "cov-per") S.opts.perCompany = Number(e.target.value) || 2;
+    else if (e.target.id === "cov-new") S.opts.newCompaniesOnly = e.target.checked;
+    else if (e.target.id === "cov-seen") S.opts.showSeen = e.target.checked;
+    else return;
+    rerun({ rewind:true });   // re-read from the top of this search under the new rule
+  });
+  $("list-notices").addEventListener("click", function(e){
+    if (e.target.id !== "cov-reset") return;
+    if (!confirm("Forget every contact and company this search has already shown? Anyone you've actually emailed stays excluded.")) return;
+    rerun({ fresh:true });
   });
 }
 
-function rerun(){
+function rerun(o){
   var btn = $("chip-rerun");
-  btn.textContent = "Searching…";
-  runSearch(S.filters).then(function(){
+  if (btn){ btn.textContent = "Searching…"; btn.disabled = true; }
+  runSearch(S.filters, o).then(function(){
     renderList(); refreshMeter();
   }).catch(function(e){
-    $("list-notices").innerHTML = noticeHTML("bad", "Search failed", "<p style='margin:0'>" + esc(explain(e, LUSHA)) + "</p>");
     renderList();
+    $("list-notices").insertAdjacentHTML("afterbegin",
+      noticeHTML("bad", "Search failed", "<p style='margin:0'>" + esc(explain(e, LUSHA)) + "</p>"));
   });
 }
 
@@ -1202,7 +1426,7 @@ function run(mode){
       var body = merge(S.mail.body, c) + "\n\n" + merge(S.mail.sig, c);
       var input = { to:[c.email], subject: merge(S.mail.subject, c), body: body };
       return call(GMAIL, mode === "draft" ? "create_draft" : "send_message", input)
-        .then(function(){ tick(c, "ok"); })
+        .then(function(){ markContacted(c); saveLedger(); tick(c, "ok"); })
         .catch(function(e){ tick(c, "err", explain(e, GMAIL)); });
     }).then(function(){
       if (i < s.length - 1) return new Promise(function(r){ setTimeout(r, 900); });
