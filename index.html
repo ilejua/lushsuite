@@ -816,34 +816,67 @@ function boot(){
   startTyping();
 
   if (!window.claude || typeof window.claude.use !== "function"){
-    offline();
+    cannotConnect("no-viewer");
     return;
   }
   Promise.all([
     window.claude.use("mcp").catch(function(){ return null; }),
-    window.claude.use("sample").catch(function(){ return null; })
+    window.claude.use("sample").catch(function(){ return null; }),
+    window.claude.use("permissions").catch(function(){ return null; })
   ]).then(function(r){
     mcp = r[0]; sampler = r[1]; bootDone = true;
-    if (!mcp) { offline(); return; }
+    if (!mcp){
+      /* Tell the two cases apart: a view that was never served the capability
+         versus one where the viewer turned it off. state() never prompts. */
+      var st = r[2] && r[2].state
+        ? Promise.resolve(r[2].state("mcp")).catch(function(){ return "unavailable"; })
+        : Promise.resolve("unavailable");
+      return st.then(function(v){ cannotConnect(v === "unavailable" ? "not-served" : "declined"); });
+    }
     return mcp.listTools().then(function(res){
-      var names = (res.servers || []).map(function(s){ return s.server; });
+      var names = (res.servers || []).map(function(sv){ return sv.server; });
       var missing = [];
       if (names.indexOf(LUSHA) < 0) missing.push(LUSHA);
       if (names.indexOf(GMAIL) < 0) missing.push(GMAIL);
-      if (missing.length){
-        $("brief-error").innerHTML = noticeHTML("warn", "Connector not found: " + missing.join(", "),
-          "<p style='margin:0'>Add " + esc(missing.join(" and ")) + " in claude.ai → Settings → Connectors and reload. " +
-          "If the name differs on your account, this page is looking for them under exactly <code>" + esc(missing.join("</code> and <code>")) + "</code>.</p>");
-      }
+      if (missing.length) cannotConnect("no-connector", missing);
       refreshMeter();
     }).catch(function(){ refreshMeter(); });
   });
 }
-function offline(){
+
+/* Each of these has a different fix, so none of them share a banner. */
+function cannotConnect(why, missing){
   bootDone = true;
-  $("brief-error").innerHTML = noticeHTML("bad", "Open this on claude.ai to use it",
-    "<p style='margin:0'>The desk needs your Lusha and Gmail connectors, which only run when the page is opened from your Claude artifacts — not from a saved copy of the file.</p>");
-  $("btn-find").disabled = true;
+  var title, body, fatal = true;
+  if (why === "no-viewer"){
+    title = "Open this from claude.ai";
+    body = "The desk runs on your Lusha and Gmail connectors, and those only work inside Claude. " +
+           "A saved copy of the file, or the page on any other address, cannot reach them.";
+  } else if (why === "not-served"){
+    title = "Connectors aren't available on this view";
+    body = "The desk can't reach Lusha or Gmail here. Two things usually cause it: the link was opened " +
+           "from a public share — a page that uses connectors can only be opened by the people it is " +
+           "shared with directly — or you are signed in to a different Claude account from the one that " +
+           "holds the connectors. Ask whoever shared it to add you by name, then open it again.";
+  } else if (why === "declined"){
+    title = "Connector access was turned off for this page";
+    body = "Reload and allow Lusha and Gmail when Claude asks, or switch them back on for this artifact " +
+           "in its connector settings.";
+    fatal = false;
+  } else {
+    var names = (missing || []).join(" and ");
+    title = "Connect " + names + " to your own account";
+    body = "The desk runs every call on <em>your</em> credentials, not the account that built it — your " +
+           "Lusha credits, and mail from your own mailbox. Add " + esc(names) +
+           " under claude.ai → Settings → Connectors, then reload this page. " +
+           "It looks for them under exactly those names; if yours are named differently, rename them to match.";
+  }
+  $("brief-error").innerHTML = noticeHTML(fatal ? "bad" : "warn", title, "<p style='margin:0'>" + body + "</p>");
+  if (fatal){
+    $("btn-find").disabled = true;
+    $("pill-sector").disabled = true;
+    $("meter").innerHTML = '<span class="mono" style="color:var(--ink-3)">not connected</span>';
+  }
 }
 function refreshMeter(){
   readOnce(LUSHA, "account_usage", {}).then(function(p){

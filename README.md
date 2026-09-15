@@ -123,6 +123,33 @@ fortnight so records Lusha adds later still surface.
 The ledger is per browser. If more than one broker works the same book, that is the
 point to move it to the artifact `db` capability so the desk shares one ledger.
 
+## Sharing
+
+This page cannot be handed round like an ordinary artifact, and that is inherent to
+how it works rather than a bug.
+
+Connector calls run on **the viewer's own credentials**. Whoever opens the page
+spends their own Lusha credits and sends mail from their own mailbox — which is the
+behaviour you want (nobody should be able to send as you from a link), but it means a
+recipient has to have Lusha and Gmail connected to their own claude.ai account before
+the page does anything. A page that declares connectors also cannot be made public;
+it has to be shared with named people.
+
+So the sequence for a colleague is: share the artifact with them directly, they
+connect Lusha and Gmail on their own account, then the page works on their credits
+and their mailbox.
+
+Five distinct failure states are handled separately, each naming its own fix, because
+they need completely different actions:
+
+| State | Cause | Message |
+|---|---|---|
+| `no-viewer` | opened outside Claude, or a saved copy of the file | open it from claude.ai |
+| `not-served` | public link, or signed in to the wrong account | ask to be added by name |
+| `declined` | viewer turned connectors off for the page | reload and allow (non-fatal) |
+| `no-connector` | viewer has no Lusha and/or Gmail of their own | add it under Settings → Connectors |
+| healthy | — | no banner, credit meter populates |
+
 ## Design decisions worth keeping
 
 - **Drafts before sends.** "Create drafts" is the first-class button; "Send now" is
