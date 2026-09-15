@@ -132,12 +132,21 @@ Connector calls run on **the viewer's own credentials**. Whoever opens the page
 spends their own Lusha credits and sends mail from their own mailbox — which is the
 behaviour you want (nobody should be able to send as you from a link), but it means a
 recipient has to have Lusha and Gmail connected to their own claude.ai account before
-the page does anything. A page that declares connectors also cannot be made public;
-it has to be shared with named people.
+the page does anything. **An artifact that calls connectors cannot be shared to a public link on any plan.**
+On Team and Enterprise it can be shared inside the organisation, with specific people
+or with everyone in it, and an Owner must also have **Enable artifact connectors** on
+under Settings → Capabilities. On Pro and Max, where a public link is the only sharing
+mechanism, a connector-backed artifact stays private to its author and cannot be
+shared at all.
 
-So the sequence for a colleague is: share the artifact with them directly, they
-connect Lusha and Gmail on their own account, then the page works on their credits
-and their mailbox.
+So the sequence for a colleague, on Team or Enterprise: share the artifact with them
+inside the organisation, they connect Lusha and Gmail on their own account, and the
+page then runs on their credits and their mailbox.
+
+On Pro or Max the workable route is per-person copies: each broker publishes their own
+artifact from this repository's `index.html` and connects their own Lusha and Gmail.
+Each gets a private page on their own credits, at the cost of the ledger and CRM
+exclusions being per person rather than shared.
 
 Five distinct failure states are handled separately, each naming its own fix, because
 they need completely different actions:

@@ -854,10 +854,12 @@ function cannotConnect(why, missing){
            "A saved copy of the file, or the page on any other address, cannot reach them.";
   } else if (why === "not-served"){
     title = "Connectors aren't available on this view";
-    body = "The desk can't reach Lusha or Gmail here. Two things usually cause it: the link was opened " +
-           "from a public share — a page that uses connectors can only be opened by the people it is " +
-           "shared with directly — or you are signed in to a different Claude account from the one that " +
-           "holds the connectors. Ask whoever shared it to add you by name, then open it again.";
+    body = "A page that calls connectors can never be opened from a public link. It can only be shared " +
+           "inside an organisation on a Team or Enterprise plan, and only with people who have their own " +
+           "Lusha and Gmail connected. On a Pro or Max account it cannot be shared at all — it stays " +
+           "private to whoever built it. If you were sent a link, ask for it to be shared with you inside " +
+           "your organisation, or publish your own copy from the source repository and connect your own " +
+           "Lusha and Gmail to it.";
   } else if (why === "declined"){
     title = "Connector access was turned off for this page";
     body = "Reload and allow Lusha and Gmail when Claude asks, or switch them back on for this artifact " +
