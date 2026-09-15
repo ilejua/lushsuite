@@ -148,6 +148,13 @@ artifact from this repository's `index.html` and connects their own Lusha and Gm
 Each gets a private page on their own credits, at the cost of the ledger and CRM
 exclusions being per person rather than shared.
 
+Note that pasting `index.html` into a normal claude.ai conversation does **not** work:
+chat artifacts get a different, flat `window.claude` with no `use()`, so none of this
+page's connector calls exist there. It has to be published from Claude Code or the
+Claude desktop app.
+
+See [SETUP.md](SETUP.md) for the step-by-step of each route.
+
 Five distinct failure states are handled separately, each naming its own fix, because
 they need completely different actions:
 
