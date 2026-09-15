@@ -107,48 +107,94 @@ main{max-width:1180px; margin:0 auto; padding:0 20px 88px}
 .view[hidden]{display:none!important}
 
 /* ---------- stage 1 : brief ---------- */
-.brief{padding:clamp(34px,7vh,76px) 0 40px; position:relative}
+.brief{padding:clamp(42px,9vh,96px) 0 56px; position:relative}
 .brief::before{
-  content:""; position:absolute; inset:-10% -40% 40%; z-index:-1; pointer-events:none;
-  background:radial-gradient(52% 46% at 50% 34%,color-mix(in srgb,var(--elegant-blue) 20%,transparent),transparent 72%);
+  content:""; position:absolute; inset:-14% -40% 42%; z-index:-1; pointer-events:none;
+  background:radial-gradient(48% 44% at 50% 30%,color-mix(in srgb,var(--elegant-blue) 17%,transparent),transparent 72%);
   animation:drift 22s ease-in-out infinite alternate;
 }
 @keyframes drift{from{transform:translate3d(-3%,0,0) scale(1)}to{transform:translate3d(3%,2%,0) scale(1.08)}}
-.brief-in{max-width:720px;margin:0 auto}
+.brief-in{max-width:660px;margin:0 auto;text-align:center}
 .brief h1{
-  font-family:Apparat,"Kmr Apparat",Inter,Arial,sans-serif; font-weight:400;
-  font-size:clamp(33px,5.2vw,53px); line-height:1.08; letter-spacing:-.035em;
+  font-family:Apparat,"Kmr Apparat",Inter,Arial,sans-serif; font-weight:600;
+  font-size:clamp(28px,4.4vw,42px); line-height:1.13; letter-spacing:-.032em;
 }
-.brief h1 em{font-style:normal;color:var(--dark-blue);box-shadow:inset 0 -.28em 0 var(--digital-blue)}
-@media (prefers-color-scheme:dark){
-  :root:not([data-theme="light"]) .brief h1 em{color:var(--digital-blue);box-shadow:none}
-}
-:root[data-theme="dark"] .brief h1 em{color:var(--digital-blue);box-shadow:none}
-.brief .sub{color:var(--ink-2); margin:16px 0 26px; max-width:52ch}
+.brief .sub{color:var(--ink-2); margin:14px auto 30px; max-width:56ch; font-size:15px}
+
+/* composer — rounded card, ghost placeholder types itself, send dot inside */
 .composer{
-  background:var(--surface); border:1px solid var(--rule); border-radius:3px;
-  box-shadow:0 1px 0 var(--rule-2), 0 14px 34px -26px rgba(0,0,0,.5);
+  position:relative; text-align:left; background:var(--raised);
+  border:1px solid var(--rule); border-radius:16px;
+  box-shadow:0 1px 2px rgba(35,31,32,.04), 0 18px 40px -32px rgba(35,31,32,.45);
+  transition:border-color .16s, box-shadow .16s;
+}
+.composer:focus-within{
+  border-color:var(--elegant-blue);
+  box-shadow:0 0 0 4px color-mix(in srgb,var(--elegant-blue) 18%,transparent), 0 18px 40px -32px rgba(35,31,32,.45);
 }
 .composer textarea{
-  width:100%; border:0; background:none; resize:vertical; min-height:128px;
-  padding:19px 20px 8px; font-size:17px; line-height:1.5; display:block;
+  position:relative; z-index:1; width:100%; border:0; background:none; resize:none;
+  padding:20px 58px 22px 22px; font-size:16px; line-height:1.55; display:block;
+  min-height:104px; color:var(--ink);
 }
 .composer textarea:focus{outline:none}
-.composer-foot{
-  display:flex; gap:12px; align-items:center; flex-wrap:wrap;
-  padding:11px 14px 13px 20px; border-top:1px solid var(--rule-2);
+.ghost{
+  position:absolute; inset:20px 58px 22px 22px; z-index:0; pointer-events:none;
+  font-size:16px; line-height:1.55; color:var(--ink-3);
 }
-.hint{font-size:12.5px;color:var(--ink-3);flex:1 1 200px;min-width:0}
-.examples{margin-top:22px}
-.examples-label{font-size:12px;color:var(--ink-3);margin-bottom:9px}
-.ex{
-  display:block; width:100%; text-align:left; background:none; cursor:pointer;
-  border:0; border-top:1px solid var(--rule-2); padding:11px 2px;
-  color:var(--ink-2); font-size:14px; line-height:1.45; transition:color .15s,padding .15s;
+.ghost[hidden]{display:none}
+.caret{
+  display:inline-block; width:1.5px; height:1.05em; vertical-align:-.18em;
+  margin-left:1px; background:var(--elegant-blue); animation:blink 1.05s steps(1) infinite;
 }
-.ex:last-child{border-bottom:1px solid var(--rule-2)}
-.ex:hover{color:var(--accent); padding-left:8px}
-.ex span{color:var(--ink-3);font-family:"IBM Plex Mono",monospace;font-size:11px;margin-right:9px}
+@keyframes blink{0%,49%{opacity:1}50%,100%{opacity:0}}
+.send-dot{
+  position:absolute; right:12px; bottom:12px; z-index:2;
+  width:31px; height:31px; border-radius:50%; border:0; cursor:pointer;
+  display:grid; place-items:center; color:#fff;
+  background:color-mix(in srgb,var(--elegant-blue) 55%,var(--rule));
+  transition:background .16s, transform .12s;
+}
+.send-dot:hover:not(:disabled){background:var(--dark-blue)}
+.send-dot:active:not(:disabled){transform:scale(.93)}
+.send-dot.armed{background:var(--dark-blue)}
+.send-dot:disabled{cursor:not-allowed;opacity:.55}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]) .send-dot{color:var(--warm-black)}
+}
+:root[data-theme="dark"] .send-dot{color:var(--warm-black)}
+
+/* filter pills */
+.pills{display:flex;gap:9px;justify-content:center;flex-wrap:wrap;margin-top:16px}
+.pill-btn{
+  display:inline-flex; align-items:center; gap:7px; cursor:pointer;
+  background:var(--raised); border:1px solid var(--rule); border-radius:10px;
+  padding:8px 14px; font-size:13.5px; color:var(--ink-2);
+  transition:border-color .14s,color .14s,background .14s;
+}
+.pill-btn:hover{border-color:var(--elegant-blue);color:var(--ink);background:var(--surface)}
+.pill-btn svg{flex:none;opacity:.8}
+.brief-status{min-height:20px;margin-top:20px;font-size:13px;color:var(--ink-3)}
+.brief-status .spin{display:inline-block;vertical-align:-2px;margin-right:7px;color:var(--elegant-blue)}
+#brief-error{text-align:left}
+
+/* filter dialog internals */
+.fset{margin-bottom:16px}
+.fset h4{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);margin:0 0 8px;font-weight:600}
+.opts{display:flex;flex-wrap:wrap;gap:6px}
+.opt{
+  display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;
+  border:1px solid var(--rule);border-radius:8px;padding:5px 10px;background:var(--raised);
+  transition:border-color .13s,background .13s;
+}
+.opt:hover{border-color:var(--elegant-blue)}
+.opt input{margin:0;width:13px;height:13px}
+.opt.on{background:var(--accent-wash);border-color:var(--elegant-blue);color:var(--accent)}
+.grp{margin-bottom:10px}
+.grp>span{display:block;font-size:12px;color:var(--ink-3);margin-bottom:5px}
+.scroller{max-height:min(58vh,430px);overflow-y:auto;padding-right:6px;scrollbar-gutter:stable}
+.row2{display:flex;gap:10px;flex-wrap:wrap}
+.row2 .field{flex:1 1 130px;margin-bottom:0}
 
 /* ---------- buttons ---------- */
 .btn{
@@ -304,7 +350,7 @@ input[type=checkbox]{width:15px;height:15px;accent-color:var(--accent);cursor:po
 
 dialog{
   border:1px solid var(--rule); border-radius:3px; background:var(--surface); color:var(--ink);
-  padding:0; max-width:520px; width:calc(100% - 32px); box-shadow:0 30px 70px -30px rgba(0,0,0,.6);
+  padding:0; max-width:580px; width:calc(100% - 32px); max-height:calc(100vh - 48px); box-shadow:0 30px 70px -30px rgba(0,0,0,.6);
 }
 dialog::backdrop{background:rgba(10,12,14,.55)}
 .dlg{padding:20px 22px 22px}
@@ -334,28 +380,34 @@ dialog::backdrop{background:rgba(10,12,14,.55)}
   <!-- ======================= 1. BRIEF ======================= -->
   <section class="view brief" id="v-brief">
     <div class="brief-in">
-      <h1>Describe the book you want to <em>build</em>.</h1>
-      <p class="sub">Write it the way you'd brief a junior: sector, geography, who signs off. The desk resolves it into a Lusha search, reveals verified work emails, and drafts the approach.</p>
+      <h1>Find &amp; enrich your next prospects</h1>
+      <p class="sub">Describe who you want to reach. It resolves into a Lusha search, reveals verified work emails, and drafts the approach.</p>
 
-      <div class="composer">
-        <label for="brief-text" class="sr" style="position:absolute;left:-9999px">Prospecting brief</label>
-        <textarea id="brief-text" placeholder="e.g. UK aviation and aerospace businesses that import parts and would benefit from a trade finance facility — I want CFOs and finance directors."></textarea>
-        <div class="composer-foot">
-          <span class="hint" id="brief-hint">Search costs 1 Lusha credit per 25 results. Revealing an email costs 1 credit each.</span>
-          <button class="btn ghost" id="btn-crm" type="button">CRM exclusions</button>
-          <button class="btn primary" id="btn-find" type="button">Find prospects</button>
-        </div>
+      <div class="composer" id="composer">
+        <div class="ghost" id="ghost" aria-hidden="true"><span id="ghost-text"></span><i class="caret"></i></div>
+        <textarea id="brief-text" aria-label="Describe the prospects you want to reach" rows="3"></textarea>
+        <button class="send-dot" id="btn-find" type="button" aria-label="Find prospects">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+        </button>
       </div>
 
+      <div class="pills">
+        <button class="pill-btn" id="pill-contact" type="button">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.4"/><path d="M5.5 20a6.5 6.5 0 0 1 13 0"/></svg>
+          Contact filters
+        </button>
+        <button class="pill-btn" id="pill-company" type="button">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="11" height="18" rx="1.4"/><path d="M15 9h5v12h-5M7.5 7h4M7.5 11h4M7.5 15h4"/></svg>
+          Company filters
+        </button>
+        <button class="pill-btn" id="btn-crm" type="button">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v10m0 0 3.5-3.5M12 13 8.5 9.5M4 16v3.5h16V16"/></svg>
+          Import from CRM
+        </button>
+      </div>
+
+      <div class="brief-status" id="brief-status"></div>
       <div id="brief-error"></div>
-
-      <div class="examples">
-        <div class="examples-label">Recent shapes of brief</div>
-        <button class="ex" type="button"><span>AVI</span>UK aviation &amp; aerospace importers — CFOs, finance directors and heads of treasury who'd benefit from a trade finance facility.</button>
-        <button class="ex" type="button"><span>FMD</span>Food &amp; beverage wholesalers and importers in the UK, 50–500 staff, paying suppliers in EUR and USD. Finance decision makers only.</button>
-        <button class="ex" type="button"><span>MFG</span>UK manufacturers with overseas supply chains — group treasurers, financial controllers and CFOs for FX hedging conversations.</button>
-        <button class="ex" type="button"><span>LOG</span>Freight forwarding and logistics companies in the UK and Ireland. Anyone senior in finance.</button>
-      </div>
     </div>
   </section>
 
@@ -433,6 +485,30 @@ dialog::backdrop{background:rgba(10,12,14,.55)}
     </div>
   </section>
 </main>
+
+<dialog id="dlg-contact">
+  <form method="dialog" class="dlg">
+    <h3>Contact filters</h3>
+    <p>Search by role directly, without writing a brief. Anything set here replaces the contact side of the current search.</p>
+    <div class="scroller" id="contact-body"></div>
+    <div class="dlg-foot">
+      <button class="btn" value="cancel" type="submit">Cancel</button>
+      <button class="btn primary" value="save" type="submit">Search these</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dlg-company">
+  <form method="dialog" class="dlg">
+    <h3>Company filters</h3>
+    <p>Narrow by sector, country and size. Anything set here replaces the company side of the current search.</p>
+    <div class="scroller" id="company-body"></div>
+    <div class="dlg-foot">
+      <button class="btn" value="cancel" type="submit">Cancel</button>
+      <button class="btn primary" value="save" type="submit">Search these</button>
+    </div>
+  </form>
+</dialog>
 
 <dialog id="dlg-crm">
   <form method="dialog" class="dlg">
@@ -663,7 +739,7 @@ function boot(){
   }
   renderSteps();
   bindStatic();
-  renderExamples();
+  startTyping();
 
   if (!window.claude || typeof window.claude.use !== "function"){
     offline();
@@ -735,24 +811,86 @@ function reach(n){ if (n > S.reached) S.reached = n; }
 /* ============================================================
    Stage 1 — brief → structured Lusha filters
    ============================================================ */
-function renderExamples(){
-  var list = document.querySelectorAll(".ex");
-  for (var i = 0; i < list.length; i++){
-    list[i].addEventListener("click", function(){
-      var t = this.textContent.replace(/^[A-Z]{3}/, "").trim();
-      $("brief-text").value = t;
-      $("brief-text").focus();
-    });
+var PROMPTS = [
+  "UK aviation and aerospace importers — CFOs and finance directors",
+  "Food and beverage wholesalers paying suppliers in EUR and USD",
+  "Manufacturers in the Midlands with overseas supply chains",
+  "Freight forwarders and logistics firms in the UK and Ireland",
+  "Group treasurers at construction firms importing materials",
+  "Fashion and apparel importers, 50-500 staff, finance decision makers"
+];
+var typer = { timer:0, i:0, pos:0, deleting:false, stopped:false };
+
+/* The ghost sits behind the textarea and types itself through PROMPTS. It is
+   aria-hidden — the textarea carries its own label — and it gives up for good
+   the moment anyone types, so it never fights the user for the caret. */
+function startTyping(){
+  var ghost = $("ghost"), out = $("ghost-text");
+  if (!ghost || !out) return;
+  if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches){
+    out.textContent = PROMPTS[0];
+    return;
   }
+  function tick(){
+    if (typer.stopped) return;
+    var full = PROMPTS[typer.i];
+    var delay;
+    if (!typer.deleting){
+      typer.pos++;
+      out.textContent = full.slice(0, typer.pos);
+      if (typer.pos >= full.length){ typer.deleting = true; delay = 2100; }
+      else delay = 34 + Math.random() * 34;
+    } else {
+      typer.pos--;
+      out.textContent = full.slice(0, typer.pos);
+      if (typer.pos <= 0){
+        typer.deleting = false;
+        typer.i = (typer.i + 1) % PROMPTS.length;
+        delay = 320;
+      } else delay = 16;
+    }
+    typer.timer = setTimeout(tick, delay);
+  }
+  tick();
 }
+function stopTyping(){
+  typer.stopped = true;
+  clearTimeout(typer.timer);
+  var g = $("ghost");
+  if (g) g.hidden = true;
+}
+function syncGhost(){
+  var ta = $("brief-text"), g = $("ghost");
+  if (!ta || !g) return;
+  var has = ta.value.length > 0;
+  $("btn-find").classList.toggle("armed", has);
+  if (has && !typer.stopped) stopTyping();
+  else if (!has && typer.stopped) g.hidden = false;
+}
+
 function bindStatic(){
   $("steps").addEventListener("click", function(e){
     var b = e.target.closest("[data-go]");
     if (b && b.getAttribute("data-reachable") === "1") go(Number(b.getAttribute("data-go")));
   });
   $("btn-find").addEventListener("click", startSearch);
+  $("brief-text").addEventListener("input", syncGhost);
+  $("brief-text").addEventListener("focus", stopTyping);
   $("brief-text").addEventListener("keydown", function(e){
-    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") startSearch();
+    if (e.key === "Enter" && !e.shiftKey){ e.preventDefault(); startSearch(); }
+  });
+  $("composer").addEventListener("click", function(e){
+    if (e.target === this || e.target.id === "ghost" || e.target.id === "ghost-text") $("brief-text").focus();
+  });
+  $("pill-contact").addEventListener("click", function(){ openFilters("contact"); });
+  $("pill-company").addEventListener("click", function(){ openFilters("company"); });
+  $("dlg-contact").addEventListener("close", function(){ if (this.returnValue === "save") applyFilters("contact"); });
+  $("dlg-company").addEventListener("close", function(){ if (this.returnValue === "save") applyFilters("company"); });
+  [$("dlg-contact"), $("dlg-company")].forEach(function(d){
+    d.addEventListener("change", function(e){
+      var lab = e.target.closest(".opt");
+      if (lab) lab.classList.toggle("on", e.target.checked);
+    });
   });
   $("btn-crm").addEventListener("click", function(){
     $("crm-text").value = S.crm.join("\n");
@@ -798,6 +936,14 @@ function unbusy(btn){
   btn.disabled = false;
   if (btn.dataset.was) btn.innerHTML = btn.dataset.was;
 }
+function briefBusy(label){
+  $("btn-find").disabled = true;
+  $("brief-status").innerHTML = '<span class="spin"></span>' + esc(label) + "…";
+}
+function briefIdle(){
+  $("btn-find").disabled = false;
+  $("brief-status").textContent = "";
+}
 
 function startSearch(){
   var text = $("brief-text").value.trim();
@@ -805,26 +951,25 @@ function startSearch(){
   if (!mcp){ return; }
   S.brief = text;
   $("brief-error").innerHTML = "";
-  var btn = $("btn-find");
-  busy(btn, "Reading the brief…");
+  briefBusy("Reading the brief");
 
   taxonomies()
     .then(function(tax){
-      busy(btn, "Resolving filters…");
+      briefBusy("Resolving filters");
       return parseBrief(text, tax);
     })
     .then(function(f){
       S.filters = f;
-      busy(btn, "Searching Lusha…");
+      briefBusy("Searching Lusha");
       return runSearch(f);
     })
     .then(function(){
-      unbusy(btn);
+      briefIdle();
       reach(1); go(1);
       renderList();
     })
     .catch(function(e){
-      unbusy(btn);
+      briefIdle();
       $("brief-error").innerHTML = noticeHTML("bad", "Couldn't run that search",
         "<p style='margin:0'>" + esc(e && e.__page ? e.message : explain(e, e && e.__server || LUSHA)) + "</p>");
     });
@@ -897,6 +1042,112 @@ function parseBrief(text, tax){
     var e = new Error(m[err && err.code] || "Couldn't turn that brief into a search. Try rewording it.");
     e.__page = true; throw e;
   });
+}
+
+/* ---- the filter pills: search by structured criteria, no brief needed ---- */
+function blankFilters(){
+  return { subIndustryIds:[], countries:["United Kingdom"], departments:["Finance"],
+           seniorityIds:[9,8,6], jobTitles:[], sizeMin:null, sizeMax:null, keywords:[], summary:"" };
+}
+function optHTML(attr, val, label, on){
+  return '<label class="opt' + (on ? " on" : "") + '"><input type="checkbox" data-' + attr +
+         '="' + esc(String(val)) + '"' + (on ? " checked" : "") + '>' + esc(label) + '</label>';
+}
+function openFilters(kind){
+  var dlg = $(kind === "contact" ? "dlg-contact" : "dlg-company");
+  var body = $(kind === "contact" ? "contact-body" : "company-body");
+  body.innerHTML = '<p class="sm"><span class="spin" style="display:inline-block;vertical-align:-2px;margin-right:7px"></span>Loading Lusha\'s filter values…</p>';
+  dlg.showModal();
+
+  taxonomies().then(function(tax){
+    var f = S.filters || blankFilters();
+    var h = "";
+    if (kind === "contact"){
+      h += '<div class="fset"><h4>Seniority</h4><div class="opts">' +
+        tax.seniority.map(function(v){
+          return optHTML("sen", v.id, v.name, f.seniorityIds.indexOf(v.id) >= 0);
+        }).join("") + '</div></div>';
+      h += '<div class="fset"><h4>Department</h4><div class="opts">' +
+        tax.departments.map(function(d){
+          return optHTML("dept", d, d, f.departments.indexOf(d) >= 0);
+        }).join("") + '</div></div>';
+      h += '<div class="fset"><h4>Job titles</h4>' +
+        '<input id="f-titles" type="text" autocomplete="off" placeholder="Chief Financial Officer, Group Treasurer" value="' +
+        esc(f.jobTitles.join(", ")) + '" style="width:100%;background:var(--raised);border:1px solid var(--rule);border-radius:2px;padding:9px 11px">' +
+        '<div class="sm" style="margin-top:5px">Comma separated. Leave blank to match any title at the seniorities above.</div></div>';
+    } else {
+      h += '<div class="fset"><h4>Country</h4>' +
+        '<input id="f-country" type="text" autocomplete="off" value="' + esc(f.countries.join(", ")) +
+        '" style="width:100%;background:var(--raised);border:1px solid var(--rule);border-radius:2px;padding:9px 11px">' +
+        '<div class="sm" style="margin-top:5px">Comma separated, as Lusha spells them — e.g. United Kingdom, Ireland.</div></div>';
+      h += '<div class="fset"><h4>Headcount</h4><div class="row2">' +
+        '<label class="field"><span class="sm">Minimum</span><input id="f-min" type="number" min="0" value="' + (f.sizeMin == null ? "" : f.sizeMin) + '"></label>' +
+        '<label class="field"><span class="sm">Maximum</span><input id="f-max" type="number" min="0" value="' + (f.sizeMax == null ? "" : f.sizeMax) + '"></label>' +
+        '</div></div>';
+      h += '<div class="fset"><h4>Industry</h4>' + tax.industries.map(function(m){
+        return '<div class="grp"><span>' + esc(m.main_industry) + '</span><div class="opts">' +
+          m.sub_industries.map(function(sub){
+            return optHTML("ind", sub.id, sub.value, f.subIndustryIds.indexOf(sub.id) >= 0);
+          }).join("") + '</div></div>';
+      }).join("") + '</div>';
+    }
+    body.innerHTML = h;
+  }).catch(function(e){
+    body.innerHTML = noticeHTML("bad", "Couldn't load the filter values",
+      "<p style='margin:0'>" + esc(explain(e, LUSHA)) + "</p>");
+  });
+}
+function applyFilters(kind){
+  var body = $(kind === "contact" ? "contact-body" : "company-body");
+  var f = S.filters || blankFilters();
+  function picked(attr){
+    return Array.prototype.map.call(body.querySelectorAll("[data-" + attr + "]:checked"),
+      function(el){ return el.getAttribute("data-" + attr); });
+  }
+  function csv(id){
+    var el = $(id);
+    return el ? el.value.split(",").map(function(t){ return t.trim(); }).filter(Boolean) : [];
+  }
+  if (kind === "contact"){
+    f.seniorityIds = picked("sen").map(Number);
+    f.departments = picked("dept");
+    f.jobTitles = csv("f-titles").slice(0, 8);
+  } else {
+    f.subIndustryIds = picked("ind").map(Number);
+    var c = csv("f-country");
+    f.countries = c.length ? c : ["United Kingdom"];
+    var mn = $("f-min"), mx = $("f-max");
+    f.sizeMin = mn && mn.value !== "" ? Number(mn.value) : null;
+    f.sizeMax = mx && mx.value !== "" ? Number(mx.value) : null;
+  }
+  f.summary = describeFilters(f);
+  S.filters = f;
+  if (!S.brief) S.brief = f.summary;
+
+  briefBusy("Searching Lusha");
+  runSearch(f).then(function(){
+    briefIdle(); reach(1); go(1); renderList(); refreshMeter();
+  }).catch(function(e){
+    briefIdle();
+    $("brief-error").innerHTML = noticeHTML("bad", "Couldn't run that search",
+      "<p style='margin:0'>" + esc(explain(e, LUSHA)) + "</p>");
+  });
+}
+/* A readable sentence for a filter-built search, so the email drafter still has
+   something to work from when no brief was typed. */
+function describeFilters(f){
+  var sectors = [];
+  ((_tax && _tax.industries) || []).forEach(function(m){
+    m.sub_industries.forEach(function(sub){
+      if (f.subIndustryIds.indexOf(sub.id) >= 0) sectors.push(sub.value);
+    });
+  });
+  var who = f.jobTitles.length ? f.jobTitles.join(", ")
+          : (f.departments.join(" and ") || "senior") + " decision makers";
+  var size = f.sizeMin != null || f.sizeMax != null
+    ? " with " + (f.sizeMin || 0) + "-" + (f.sizeMax || "any") + " staff" : "";
+  return who + " at " + (sectors.length ? sectors.slice(0, 4).join(", ") : "companies") +
+         " businesses in " + f.countries.join(" and ") + size + ".";
 }
 
 function toLushaInput(f, page){
