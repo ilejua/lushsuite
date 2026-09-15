@@ -43,6 +43,27 @@ Live check on UK aviation and aerospace finance decision-makers: 943 matches
 unfiltered, 370 with the exclusion on, dropping BAE Systems, QinetiQ, Smiths Group
 and MAG Airports while keeping Titan Airways, AerFin and Dunlop Aircraft Tyres.
 
+### Job titles
+
+Departments are limited to **Finance**, **General Management** and **Operations** —
+Lusha's other thirteen are not offered, since nobody in them buys a facility.
+
+Those three still carry plenty of non-buyers, so a title guard runs over every result
+(default on, and off automatically when exact titles are given):
+
+| Kept | Dropped |
+|---|---|
+| CFO, Finance/Financial Director, Head of Finance, Financial Controller, Treasurer, Head of Treasury, Accounts, FP&A | Investment Director and other investor roles |
+| Founder, Co-Founder, CEO, Chief Executive, Managing Director, Owner, President | Non-Executive Director, Vice President of *anything* non-finance |
+| COO, Chief Operating Officer, Operations Director, Director of Manufacturing and Operations | Procurement, Supply Chain, Commercial, Strategy, Project, Manufacturing Director |
+
+Managing Director is kept deliberately: in a UK SME it is the CEO, and dropping it
+would lose most of the market.
+
+The guard runs client-side during the page walk, so it costs no credits — the walker
+simply reads further until it has a full run of on-target people. Verified against 40
+real titles pulled from a live search: 21/21 kept correctly, 19/19 dropped correctly.
+
 ### Lusha filters that silently return zero
 
 Three filters return an empty result set rather than an error when given values

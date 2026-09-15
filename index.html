@@ -576,7 +576,7 @@ var S = {
        cursors    — per-query page cursor, so run 2 starts where run 1 stopped */
   ledger: { seen:{}, contacted:{}, companies:{}, cursors:{} },
   opts: { perCompany:2, showSeen:false, newCompaniesOnly:false },
-  run: { index:1, pages:0, scanned:0, hidSeen:0, hidContacted:0, hidCompany:0, exhausted:false }
+  run: { index:1, pages:0, scanned:0, hidSeen:0, hidContacted:0, hidCompany:0, hidTitle:0, exhausted:false }
 };
 
 var TARGET = 100;     // fresh contacts we try to fill a run with
@@ -674,7 +674,8 @@ function sigOf(f){
     l:(f.seniorityIds||[]).slice().sort(),
     t:(f.jobTitles||[]).slice().sort(),
     z:(f.sizes||[]).map(function(b){ return b.min + "-" + (b.max || ""); }).sort(),
-    x:!!f.excludeLarge
+    x:!!f.excludeLarge,
+    g:!!f.titleGuard
   };
   var str = JSON.stringify(norm), h = 5381;
   for (var i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) | 0;
@@ -1043,12 +1044,12 @@ function parseBrief(text, tax){
     "BRIEF:\n" + text + "\n\n" +
     "AVAILABLE SUB-INDUSTRIES (name=id):\n" + industryLines + "\n\n" +
     "SENIORITY (name=id): " + seniorityLine + "\n" +
-    "DEPARTMENTS: " + tax.departments.join(", ") + "\n" +
+    "DEPARTMENTS (only these three exist): " + DEPTS_ALLOWED.join(", ") + "\n" +
     "HEADCOUNT BUCKETS: " + sizeLine + "\n\n" +
     "Rules:\n" +
     "- Every search is United Kingdom only. Do not return a country.\n" +
     "- subIndustryIds: pick every sub-industry id the brief plausibly covers. Include adjacent ones (an 'aviation' brief covers both air services and aerospace manufacturing). Empty array if the brief names no sector.\n" +
-    "- departments: only from the DEPARTMENTS list. A brief about finance/treasury/trade finance buyers means [\"Finance\"].\n" +
+    "- departments: only from the DEPARTMENTS list. Default to all three unless the brief clearly wants only one.\n" +
     "- seniorityIds: ids from SENIORITY. Decision-maker briefs usually mean c-suite, vice president and director.\n" +
     "- jobTitles: free-text titles worth targeting, at most 8, only if the brief implies specific roles.\n" +
     "- sizes: only when the brief states a company size. Return whole buckets from HEADCOUNT BUCKETS that cover the stated range, as {min,max} objects, max omitted for the open-ended top bucket. A brief saying '50-500 staff' means [{\"min\":51,\"max\":200},{\"min\":201,\"max\":500}]. Otherwise [].\n" +
@@ -1073,6 +1074,7 @@ function parseBrief(text, tax){
         ? f.sizes.map(function(b){ return valid[Number(b && b.min) + "-" + (b && b.max ? Number(b.max) : "")]; }).filter(Boolean)
         : [],
       excludeLarge: true,
+      titleGuard: true,
       summary: typeof f.summary === "string" ? f.summary : ""
     };
   }).catch(function(err){
@@ -1086,8 +1088,9 @@ function parseBrief(text, tax){
 }
 
 function blankFilters(){
-  return { subIndustryIds:[], departments:["Finance"], seniorityIds:[9,8,6],
-           jobTitles:[], sizes:[], excludeLarge:true, summary:"" };
+  return { subIndustryIds:[], departments:["Finance","General Management","Operations"],
+           seniorityIds:[10,9,8,6], jobTitles:[], sizes:[], excludeLarge:true,
+           titleGuard:true, summary:"" };
 }
 function optHTML(attr, val, label, on){
   return '<label class="opt' + (on ? " on" : "") + '"><input type="checkbox" data-' + attr +
@@ -1115,9 +1118,10 @@ function openFilters(){
       }).join("") + '</div></div>';
 
     h += '<div class="fset"><h4>Department</h4><div class="opts">' +
-      tax.departments.map(function(d){
+      tax.departments.filter(function(d){ return DEPTS_ALLOWED.indexOf(d) >= 0; }).map(function(d){
         return optHTML("dept", d, d, f.departments.indexOf(d) >= 0);
-      }).join("") + '</div></div>';
+      }).join("") + '</div>' +
+      '<div class="sm" style="margin-top:6px">Lusha\'s other departments are not offered — nobody in them buys a facility.</div></div>';
 
     h += '<div class="fset"><h4>Company size</h4><div class="opts">' +
       tax.sizes.map(function(b){
@@ -1128,9 +1132,17 @@ function openFilters(){
       '<div class="sm" style="margin-top:6px">Leave all clear for any size. Lusha only matches these bands, so a band of your own returns nothing.</div></div>';
 
     h += '<div class="fset"><h4>Job titles</h4>' +
+      '<label class="opt' + (f.titleGuard ? " on" : "") + '" style="font-size:13.5px">' +
+      '<input type="checkbox" id="f-titleguard"' + (f.titleGuard ? " checked" : "") + '>Finance and leadership titles only</label>' +
+      '<div class="sm" style="margin-top:6px">Keeps finance of every stripe (CFO, FD, controller, treasury, accounts), ' +
+      'the people who own the business (founder, CEO, managing director, owner, president) and real operations leadership (COO, operations director). ' +
+      'Drops procurement, supply chain, commercial, strategy, project and non-executive roles that sit in the same departments. ' +
+      'Naming exact titles below turns this off for that search.</div></div>';
+
+    h += '<div class="fset"><h4>Exact titles</h4>' +
       '<input id="f-titles" type="text" autocomplete="off" placeholder="Chief Financial Officer, Group Treasurer" value="' +
       esc(f.jobTitles.join(", ")) + '" style="width:100%;background:var(--raised);border:1px solid var(--rule);border-radius:2px;padding:9px 11px">' +
-      '<div class="sm" style="margin-top:5px">Comma separated. Blank matches any title at the seniorities above.</div></div>';
+      '<div class="sm" style="margin-top:5px">Comma separated, and overrides the filter above. Blank matches any allowed title at the seniorities set.</div></div>';
 
     h += '<div class="fset"><h4>Out of criteria</h4>' +
       '<label class="opt' + (f.excludeLarge ? " on" : "") + '" style="font-size:13.5px">' +
@@ -1165,6 +1177,8 @@ function applyFilters(){
   f.jobTitles = t ? t.value.split(",").map(function(x){ return x.trim(); }).filter(Boolean).slice(0, 8) : [];
   var big = $("f-bigco");
   f.excludeLarge = big ? big.checked : true;
+  var tg = $("f-titleguard");
+  f.titleGuard = tg ? tg.checked : true;
 
   f.summary = describeFilters(f);
   S.filters = f;
@@ -1204,6 +1218,31 @@ function describeFilters(f){
    with no size or revenue on file are kept, since exclude only drops known
    matches. */
 var BIG_STAFF = 1001, BIG_REV = 500000000;
+
+/* Lusha's Finance / General Management / Operations departments still carry
+   plenty of people who never buy a facility — procurement, strategy, commercial,
+   NEDs. These patterns keep finance, the people who own the company, and real
+   operations leadership, and drop the rest. Checked against live titles. */
+var DEPTS_ALLOWED = ["Finance", "General Management", "Operations"];
+var T_NED    = /non[\s-]?exec/i;
+var T_CORE   = /\b(cfo|chief financial|chief finance|finance|financial|treasur\w*|controller|comptroller|accounts?|accounting|accountant|fp&a|bursar|credit control)\b/i;
+var T_INVEST = /\b(investment|investor relations|portfolio|fund|venture|private equity)\b/i;
+var T_LEADER = /\b(founder|co[\s-]?founder|ceo|chief executive|managing director|owner|proprietor|president)\b/i;
+var T_OPS    = /\b(coo|chief operating|operating officer|operations)\b/i;
+var T_OPS_NO = /\b(sales|marketing|revenue|people|hr|human resources|talent|customer|security|network|clinical|it)\b/i;
+
+function titleAllowed(title){
+  var t = String(title || "");
+  if (!t) return false;
+  if (T_NED.test(t)) return false;                           // NEDs do not buy facilities
+  if (T_CORE.test(t)) return !T_INVEST.test(t);              // finance, but not investors
+  /* "President" must not match inside "Vice President" — a VP of EMEA is not
+     the person who owns the company. A VP of Finance is already kept above. */
+  if (T_LEADER.test(t.replace(/\bvice\s+president\b/ig, " ").replace(/\bvp\b/ig, " "))) return true;
+  if (T_OPS.test(t)) return !T_OPS_NO.test(t);               // real ops, not sales ops
+  return false;
+}
+
 function bigCoExclusion(){
   if (!_tax) return null;
   var rev = (_tax.revenues || []).filter(function(b){ return b.min >= BIG_REV; });
@@ -1260,7 +1299,7 @@ function runSearch(f, o){
   o = o || {};
   var sig = sigOf(f);
   S.contacts = []; S.removed = {}; S.selected = {}; S.total = 0;
-  S.run = { index:1, pages:0, scanned:0, hidSeen:0, hidContacted:0, hidCompany:0, exhausted:false };
+  S.run = { index:1, pages:0, scanned:0, hidSeen:0, hidContacted:0, hidCompany:0, hidTitle:0, exhausted:false };
 
   if (o.fresh){
     delete S.ledger.cursors[sig];
@@ -1282,8 +1321,12 @@ function runSearch(f, o){
   var page = o.rewind ? 0 : (cur.page || 0);
   var perCo = {}, wrapped = false;
 
+  /* An explicit job-title list is the user overriding the guard on purpose. */
+  var guard = f.titleGuard && !f.jobTitles.length;
+
   function consider(r){
     var c = mapContact(r);
+    if (guard && !titleAllowed(c.title)){ S.run.hidTitle++; return; }
     if (S.ledger.contacted[c.id]){ S.run.hidContacted++; return; }
     if (!S.opts.showSeen && S.ledger.seen[c.id]){ S.run.hidSeen++; return; }
     if (S.opts.newCompaniesOnly && c.companyId && S.ledger.companies[c.companyId]){ S.run.hidCompany++; return; }
@@ -1315,16 +1358,18 @@ function runSearch(f, o){
   }
 
   return step().then(function(){
-    /* Nothing new, and the only reason is that we'd shown it all before —
-       that is the end of the search, however we got here. */
-    if (!S.contacts.length && (S.run.hidSeen + S.run.hidContacted + S.run.hidCompany)) S.run.exhausted = true;
-    /* Once the deck is spent, wind back to the top: the ledger now does the
-       hiding, and anyone held back by the per-company cap gets a turn. */
+    /* Two different things, previously conflated. Reaching the last page only
+       means wind the cursor back to the top — a wrap-around pass still yields
+       everyone the per-company cap and the title guard held back last time.
+       The search is only SPENT when a run returns nobody and the ledger is the
+       reason, and only that sets the flag which short-circuits later runs. */
+    var spent = !S.contacts.length && (S.run.hidSeen + S.run.hidContacted) > 0;
+    if (spent) S.run.exhausted = true;
     S.ledger.cursors[sig] = {
       page: S.run.exhausted ? 0 : page,
       runs: S.run.index,
       total: S.total,
-      done: S.run.exhausted ? Date.now() : 0
+      done: spent ? Date.now() : 0
     };
     markSeen(S.contacts);
     S.contacts.forEach(function(c){ if (!isExcluded(c)) S.selected[c.id] = true; });
@@ -1370,6 +1415,7 @@ function renderList(){
   (f.sizes || []).forEach(function(b){
     row("size", b.max ? b.min + "–" + b.max + " staff" : b.min + "+ staff", "sizes", b.min + "-" + (b.max || ""));
   });
+  if (f.titleGuard && !(f.jobTitles || []).length) row("titles", "Finance & leadership titles only", "titleGuard", "1");
   if (f.excludeLarge) row("skip", "Large corporates (1,001+ staff or $500m+)", "excludeLarge", "1");
 
   $("filter-chips").innerHTML =
@@ -1393,12 +1439,13 @@ function renderList(){
   if (r.hidSeen) why.push('<s><b>' + r.hidSeen + '</b> seen before</s>');
   if (r.hidContacted) why.push('<s><b>' + r.hidContacted + '</b> already contacted</s>');
   if (r.hidCompany) why.push('<s><b>' + r.hidCompany + '</b> same-company duplicates</s>');
+  if (r.hidTitle) why.push('<s><b>' + r.hidTitle + '</b> off-target titles</s>');
   var cov =
     '<div class="coverage">' +
       '<span class="runno">Run ' + r.index + '</span>' +
       (r.pages
         ? '<span>Read <b>' + r.scanned + '</b> records over ' + r.pages + ' page' + (r.pages === 1 ? "" : "s") +
-          ', kept <b>' + S.contacts.length + '</b>' + (r.exhausted ? " — end of this search" : "") + '</span>'
+          ', kept <b>' + S.contacts.length + '</b>' + (r.exhausted && !S.contacts.length ? " — end of this search" : "") + '</span>'
         : '<span>Every one of this search&#39;s <b>' + S.total.toLocaleString("en-GB") + '</b> matches has already been shown</span>') +
       (why.length ? '<span class="why">Skipped ' + why.join("") + '</span>' : "") +
       '<span class="cov-ctl">' +
@@ -1496,6 +1543,7 @@ function bindListOnce(){
     if (d){
       var key = d.getAttribute("data-drop"), val = d.getAttribute("data-val");
       if (key === "excludeLarge") S.filters.excludeLarge = false;
+      else if (key === "titleGuard") S.filters.titleGuard = false;
       else if (key === "sizes"){
         S.filters.sizes = (S.filters.sizes || []).filter(function(b){
           return b.min + "-" + (b.max || "") !== val;
