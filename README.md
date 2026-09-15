@@ -98,6 +98,43 @@ fixed:
 The brief parser is instructed never to invent a band, and any band it returns that
 is not in the live list is dropped before the search runs.
 
+## The email
+
+The weak point of a tool like this is that one template merged with a first name
+reads exactly like one template merged with a first name. Three things address that,
+all using data the search already paid for.
+
+**A written first line per recipient.** `Personalise each email` sends contacts to
+Claude in batches of 20 and gets back one opening line each, built from that person's
+company, sector, city, how long they have been in post and where they came from. The
+body carries a `{{opener}}` token the drafter is told to lead with; a contact without
+one falls back to a line composed from their company and sector rather than showing a
+raw token. Batched because one call per contact would be slow and expensive — 100
+recipients is five calls.
+
+**Timing.** Lusha's `jobChangedAfterDate` filter surfaces people who changed role in
+the last year, and `jobTitle.startDate` from the enrich gives months in post, shown as
+a **new in post** badge at 14 months or less. A finance lead in their first year is
+reviewing facilities, providers and terms; that is the moment worth catching. UK
+aviation and food manufacturing alone has around 1,900 of them.
+
+**Bounce risk, surfaced.** The enrich returns `confidence` and `updateDate` per
+address. Neither was being read. Both now show against each email: an A+ rating, or
+its age where Lusha last confirmed it 18 months ago or more. A live sample of eight
+contacts had confidence populated on five, and one "A+" address last confirmed in
+2023 — age turned out to be the better bounce predictor of the two, so it wins the
+badge.
+
+Two data bugs found in the same live sample and fixed:
+
+- A contact can carry addresses at two domains. One CFO had both
+  `aglazzard@mettisgroup.com` and `adam.glazzard@mettis-aerospace.com`; the code took
+  whichever came first. It now prefers the address matching the company domain the
+  contact was found at.
+- Lusha puts post-nominals in the surname field — `Alex Corbisiero Fcca` comes back
+  with `lastName: "Fcca"`, so `{{lastName}}` rendered as "Fcca". Stripped against a
+  list of common qualifications.
+
 ## Never showing the same lead twice
 
 Re-running a brief used to refetch pages 0 and 1 and hand back an identical list.

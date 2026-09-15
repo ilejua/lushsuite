@@ -346,6 +346,8 @@ input[type=checkbox]{width:15px;height:15px;accent-color:var(--accent);cursor:po
 .pill.no{background:var(--rule-2);color:var(--ink-3)}
 .pill.err{background:var(--crit-wash);color:var(--crit)}
 .pill.crm{background:var(--slate-wash);color:var(--slate)}
+.pill.warnpill{background:var(--warn-wash);color:var(--warn)}
+.pill.fresh{background:var(--accent-wash);color:var(--accent);margin-left:4px}
 
 .bulk{
   display:flex; gap:10px; align-items:center; flex-wrap:wrap;
@@ -500,6 +502,7 @@ dialog::backdrop{background:rgba(10,12,14,.55)}
         </div>
         <div style="display:flex;gap:9px;flex-wrap:wrap">
           <button class="btn" id="btn-redraft" type="button">Redraft with Claude</button>
+          <button class="btn" id="btn-personalise" type="button">Personalise each email</button>
           <button class="btn ghost" id="btn-back-list" type="button">← Back to list</button>
           <div style="flex:1"></div>
           <button class="btn primary" id="btn-to-send" type="button">Review &amp; send →</button>
@@ -723,6 +726,7 @@ function sigOf(f){
     z:(f.sizes||[]).map(function(b){ return b.min + "-" + (b.max || ""); }).sort(),
     n:S.countryId,
     x:!!f.excludeLarge,
+    w:!!f.newInPost,
     g:(f.titleGroups||[]).slice().sort().join(",")
   };
   var str = JSON.stringify(norm), h = 5381;
@@ -1061,6 +1065,7 @@ function bindStatic(){
   $("btn-back-list").addEventListener("click", function(){ go(1); });
   $("btn-to-send").addEventListener("click", function(){ reach(3); go(3); });
   $("btn-redraft").addEventListener("click", function(){ draftEmail(true); });
+  $("btn-personalise").addEventListener("click", personalise);
   $("m-subject").addEventListener("input", function(){ S.mail.subject = this.value; renderPreview(); });
   $("m-body").addEventListener("input", function(){ S.mail.body = this.value; renderPreview(); });
   $("m-sig").addEventListener("input", function(){ S.mail.sig = this.value; saveSig(); renderPreview(); });
@@ -1068,14 +1073,20 @@ function bindStatic(){
   $("pv-next").addEventListener("click", function(){ stepPreview(1); });
 }
 
+/* Only capture the original label once: busy() is called repeatedly to update a
+   progress count, and re-capturing would store the spinner as the thing to
+   restore, leaving the button stuck on "Writing 0 of 6...". */
 function busy(btn, label){
   btn.disabled = true;
-  btn.dataset.was = btn.innerHTML;
+  if (btn.dataset.was == null) btn.dataset.was = btn.innerHTML;
   btn.innerHTML = '<span class="spin"></span>' + label;
 }
 function unbusy(btn){
   btn.disabled = false;
-  if (btn.dataset.was) btn.innerHTML = btn.dataset.was;
+  if (btn.dataset.was != null){
+    btn.innerHTML = btn.dataset.was;
+    delete btn.dataset.was;
+  }
 }
 function briefBusy(label){
   $("btn-find").disabled = true;
@@ -1191,6 +1202,7 @@ function parseBrief(text, tax){
         ? f.sizes.map(function(b){ return valid[Number(b && b.min) + "-" + (b && b.max ? Number(b.max) : "")]; }).filter(Boolean)
         : [],
       excludeLarge: true,
+      newInPost: false,
       titleGroups: ["finance","director","operations"],
       summary: typeof f.summary === "string" ? f.summary : ""
     };
@@ -1263,6 +1275,10 @@ function openFilters(){
       '<div class="sm" style="margin-top:5px">Comma separated, and overrides the filter above. Blank matches any allowed title at the seniorities set.</div></div>';
 
     h += '<div class="fset"><h4>Out of criteria</h4>' +
+      '<label class="opt' + (f.newInPost ? " on" : "") + '" style="font-size:13.5px;margin-bottom:8px">' +
+      '<input type="checkbox" id="f-newpost"' + (f.newInPost ? " checked" : "") + '>Only people who changed role in the last year</label>' +
+      '<div class="sm" style="margin:0 0 14px">A finance lead in their first year is reviewing facilities, providers and terms — ' +
+      'the moment worth catching. UK aviation and food manufacturing alone has around 1,900 of them.</div>' +
       '<label class="opt' + (f.excludeLarge ? " on" : "") + '" style="font-size:13.5px">' +
       '<input type="checkbox" id="f-bigco"' + (f.excludeLarge ? " checked" : "") + '>Skip large corporates</label>' +
       '<div class="sm" style="margin-top:6px">Drops anyone at a company Lusha lists at <b>1,001+ staff</b> or <b>$500m+ revenue</b> (about £395m). ' +
@@ -1297,6 +1313,8 @@ function applyFilters(){
   f.jobTitles = t ? t.value.split(",").map(function(x){ return x.trim(); }).filter(Boolean).slice(0, 8) : [];
   var big = $("f-bigco");
   f.excludeLarge = big ? big.checked : true;
+  var np = $("f-newpost");
+  f.newInPost = np ? np.checked : false;
   f.titleGroups = picked("tgroup");
 
   f.summary = describeFilters(f);
@@ -1388,6 +1406,11 @@ function bigCoExclusion(){
   return { companies: c };
 }
 
+function isoMonthsAgo(n){
+  var d = new Date();
+  d.setMonth(d.getMonth() - n);
+  return d.toISOString().slice(0, 10);
+}
 function toLushaInput(f, page){
   var q = {
     page: page,
@@ -1401,18 +1424,34 @@ function toLushaInput(f, page){
     jobTitles: f.jobTitles.length ? f.jobTitles : undefined,
     /* Only Lusha's own headcount buckets match; arbitrary bounds return nothing. */
     sizesFilterOption: f.sizes.length ? f.sizes : undefined,
+    /* A finance lead in their first year is reviewing facilities and providers —
+       the best moment to approach one. */
+    jobChangedAfterDate: f.newInPost ? isoMonthsAgo(12) : undefined,
     exclude: f.excludeLarge ? (bigCoExclusion() || undefined) : undefined
   };
   Object.keys(q).forEach(function(k){ if (q[k] === undefined) delete q[k]; });
   return q;
 }
 
+var POSTNOM = /^(fcca|acca|aca|fca|cima|acma|fcma|mba|cpa|ffa|mcips|bsc|msc|beng|ba|ma|llb|phd|frsa|mbe|obe|cbe|cfa)$/i;
+function cleanName(n){
+  return String(n || "").split(/\s+/).filter(function(w){
+    return !POSTNOM.test(w.replace(/[.,]/g, ""));
+  }).join(" ").trim();
+}
+function monthsSince(d){
+  if (!d) return null;
+  var t = Date.parse(d);
+  if (isNaN(t)) return null;
+  return Math.max(0, Math.round((Date.now() - t) / 2629800000));
+}
+
 function mapContact(r){
   var reveal = (r.canReveal || []).filter(function(x){ return x.field === "emails"; })[0];
   return {
     id: r.id,
-    first: r.firstName || "",
-    last: r.lastName || "",
+    first: cleanName(r.firstName),
+    last: cleanName(r.lastName),
     title: (r.jobTitle && r.jobTitle.title) || "",
     seniority: (r.jobTitle && r.jobTitle.seniority) || "",
     company: (r.company && r.company.name) || "",
@@ -1422,7 +1461,9 @@ function mapContact(r){
     country: (r.location && r.location.country) || "",
     hasEmail: (r.has || []).indexOf("emails") >= 0,
     revealCost: reveal ? Number(reveal.credits) : null,
-    email: "", emailState: "hidden"
+    email: "", emailState: "hidden",
+    confidence: null, emailAge: null,      // bounce risk
+    industry: "", monthsInPost: null, prevCompany: "", opener: ""
   };
 }
 
@@ -1557,6 +1598,7 @@ function renderList(){
       row("titles", d ? d.label : g, "titleGroups", g);
     });
   }
+  if (f.newInPost) row("timing", "Changed role in the last year", "newInPost", "1");
   if (f.excludeLarge) row("skip", "Large corporates (1,001+ staff or $500m+)", "excludeLarge", "1");
 
   $("filter-chips").innerHTML =
@@ -1621,14 +1663,28 @@ function renderList(){
   }
   var rows = l.map(function(c){
     var mail;
-    if (c.email) mail = '<span class="mono" style="font-size:12.5px">' + esc(c.email) + '</span>';
+    if (c.email){
+      var q = "";
+      if (c.emailAge != null && c.emailAge >= 18){
+        q = '<span class="pill warnpill" title="Lusha last confirmed this address ' + c.emailAge + ' months ago">' +
+            (c.emailAge >= 24 ? Math.round(c.emailAge / 12) + 'y old' : c.emailAge + 'mo old') + '</span>';
+      } else if (c.confidence){
+        q = '<span class="pill ok" title="Lusha confidence ' + esc(c.confidence) + '">' + esc(c.confidence) + '</span>';
+      } else {
+        q = '<span class="pill no" title="Lusha has no confidence rating for this address">unrated</span>';
+      }
+      mail = '<div class="mono" style="font-size:12.5px">' + esc(c.email) + '</div><div style="margin-top:3px">' + q + '</div>';
+    }
     else if (c.emailState === "failed") mail = '<span class="pill err">no email found</span>';
     else if (c.revealCost === 0) mail = '<span class="pill ok">free reveal</span>';
     else if (c.revealCost > 0) mail = '<span class="pill cost">' + c.revealCost + ' credit' + (c.revealCost === 1 ? "" : "s") + '</span>';
     else mail = '<span class="pill no">unavailable</span>';
     return '<tr class="' + (S.selected[c.id] ? "sel" : "") + '" data-id="' + esc(c.id) + '">' +
       '<td class="pick"><input type="checkbox" data-pick="' + esc(c.id) + '"' + (S.selected[c.id] ? " checked" : "") + ' aria-label="Select ' + esc(c.first + " " + c.last) + '"></td>' +
-      '<td><div class="nm">' + esc(c.first + " " + c.last) + '</div><div class="sm">' + esc(c.title) + '</div></td>' +
+      '<td><div class="nm">' + esc(c.first + " " + c.last) + '</div><div class="sm">' + esc(c.title) +
+        (c.monthsInPost != null && c.monthsInPost <= 14
+          ? ' <span class="pill fresh" title="Started this role about ' + c.monthsInPost + ' months ago">new in post</span>' : "") +
+        '</div></td>' +
       '<td><div class="co">' + esc(c.company) + '</div><div class="sm mono">' + esc(c.domain) + '</div></td>' +
       '<td class="sm">' + esc([c.city, c.country].filter(Boolean).join(", ")) + '</td>' +
       '<td>' + mail + '</td>' +
@@ -1684,6 +1740,7 @@ function bindListOnce(){
     if (d){
       var key = d.getAttribute("data-drop"), val = d.getAttribute("data-val");
       if (key === "excludeLarge") S.filters.excludeLarge = false;
+      else if (key === "newInPost") S.filters.newInPost = false;
       else if (key === "titleGroups"){
         S.filters.titleGroups = (S.filters.titleGroups || []).filter(function(g){ return g !== val; });
       }
@@ -1765,9 +1822,32 @@ function revealSelected(){
         b.forEach(function(c){
           var r = byId[c.id];
           var mails = (r && r.emails) || [];
-          var work = mails.filter(function(m){ return m.type === "work"; })[0] || mails[0];
-          if (work && work.email){ c.email = work.email; c.emailState = "revealed"; }
-          else c.emailState = "failed";
+          var work = mails.filter(function(m){ return m.type === "work"; });
+          if (!work.length) work = mails;
+          /* A contact can carry addresses at two domains — Lusha returned both
+             aglazzard@mettisgroup.com and adam.glazzard@mettis-aerospace.com for
+             one CFO. Prefer the one matching the company we found them at. */
+          var dom = String(c.domain || "").toLowerCase().replace(/^www\./, "");
+          var best = work.filter(function(m){
+            return dom && String(m.email).toLowerCase().split("@")[1] === dom;
+          })[0] || work[0];
+
+          if (best && best.email){
+            c.email = best.email;
+            c.emailState = "revealed";
+            c.confidence = best.confidence || null;
+            c.emailAge = monthsSince(best.updateDate);
+          } else {
+            c.emailState = "failed";
+          }
+          /* Context for writing to this person specifically. */
+          if (r){
+            c.industry = (r.company && r.company.industry) || "";
+            c.monthsInPost = monthsSince(r.jobTitle && r.jobTitle.startDate);
+            var prev = (r.previousEmployment || [])[0];
+            var pn = prev && prev.company && prev.company.name;
+            if (pn && pn !== c.company) c.prevCompany = pn;
+          }
         });
       });
     });
@@ -1788,7 +1868,7 @@ function revealSelected(){
 /* ============================================================
    Stage 3 — the message
    ============================================================ */
-var TOKENS = ["firstName", "lastName", "jobTitle", "company", "city"];
+var TOKENS = ["opener", "firstName", "lastName", "jobTitle", "company", "city"];
 function renderMail(){
   var s = sendable();
   $("mail-count").innerHTML = '<b>' + s.length + '</b> recipient' + (s.length === 1 ? "" : "s") + ' · one personalised email each';
@@ -1812,6 +1892,7 @@ function renderMail(){
 }
 function merge(tpl, c){
   return String(tpl || "")
+    .replace(/\{\{\s*opener\s*\}\}/g, c.opener || defaultOpener(c))
     .replace(/\{\{\s*firstName\s*\}\}/g, c.first || "there")
     .replace(/\{\{\s*lastName\s*\}\}/g, c.last || "")
     .replace(/\{\{\s*jobTitle\s*\}\}/g, c.title || "your role")
@@ -1840,6 +1921,99 @@ function renderPreview(){
   $("pv-foot").textContent = merge(S.mail.sig, c);
 }
 
+/* Until a contact has a written opener, fall back to something true about them
+   rather than leaving the token visible. */
+function defaultOpener(c){
+  if (c.monthsInPost != null && c.monthsInPost <= 14){
+    return "Congratulations on the move to " + (c.company || "the role") + " — still fairly new in the seat, I think.";
+  }
+  if (c.industry && c.company) return "I work with " + c.industry.toLowerCase() + " businesses like " + c.company + ".";
+  if (c.company) return "I've been looking at " + c.company + ".";
+  return "";
+}
+
+/* One template sent to a hundred people reads like one template sent to a
+   hundred people. This writes a different first line for each recipient from
+   what Lusha actually knows about them — their company, sector, how long they
+   have been in post, where they came from. Batched, because one call per
+   contact would be slow and expensive. */
+var PERSONALISE_BATCH = 20;
+function personalise(){
+  var btn = $("btn-personalise");
+  if (!sampler){
+    $("mail-notices").innerHTML = noticeHTML("warn", "Claude isn't available here",
+      "<p style='margin:0'>Each email will use a plain opening line built from the company and sector instead.</p>");
+    return;
+  }
+  var list = sendable();
+  if (!list.length) return;
+
+  var batches = [];
+  for (var i = 0; i < list.length; i += PERSONALISE_BATCH) batches.push(list.slice(i, i + PERSONALISE_BATCH));
+  var done = 0, failed = 0;
+
+  busy(btn, "Writing 0 of " + list.length + "…");
+
+  var chain = Promise.resolve();
+  batches.forEach(function(b){
+    chain = chain.then(function(){
+      var rows = b.map(function(c, n){
+        var bits = [];
+        bits.push("id=" + n);
+        bits.push("name=" + c.first);
+        bits.push("title=" + c.title);
+        bits.push("company=" + c.company);
+        if (c.industry) bits.push("sector=" + c.industry);
+        if (c.city) bits.push("city=" + c.city);
+        if (c.monthsInPost != null) bits.push("months_in_post=" + c.monthsInPost);
+        if (c.prevCompany) bits.push("came_from=" + c.prevCompany);
+        return bits.join(" | ");
+      }).join("\n");
+
+      var prompt =
+        "You write the opening line of a cold email for a UK FX and trade finance broker. " +
+        "Reply with ONLY a JSON array of {\"id\": number, \"line\": string}, one per person below.\n\n" +
+        "THE CAMPAIGN THIS IS FOR:\n" + S.brief + "\n\nPEOPLE:\n" + rows + "\n\n" +
+        "Rules for each line:\n" +
+        "- One or two sentences, under 30 words. It is the first thing they read after their name.\n" +
+        "- Use something specific and true about THAT person from their row — the company, what it does, " +
+        "how long they have been in the seat, where they came from. Never a fact you were not given.\n" +
+        "- Someone under about 14 months in post is worth noting: a new finance lead is reviewing " +
+        "facilities and providers. Say it plainly, not as flattery.\n" +
+        "- British English. No 'I hope this finds you well', no 'I came across your profile', no " +
+        "compliments about their impressive career, no exclamation marks.\n" +
+        "- Do not pitch, do not mention rates or savings, do not ask for anything. The rest of the email does that.\n" +
+        "- Never invent revenue, headcount, deals, funding or anything you were not told.\n" +
+        "- Do not start every line the same way as the others in the batch.\n\n" +
+        'Example shape: [{"id":0,"line":"You took over finance at Titan Airways in the spring — usually the point where supplier terms and currency exposure get a fresh look."}]';
+
+      return sampler.json(prompt, { modelTier:"default", cache:false }).then(function(out){
+        (Array.isArray(out) ? out : []).forEach(function(row){
+          var c = b[Number(row && row.id)];
+          if (c && row && typeof row.line === "string") c.opener = row.line.trim();
+        });
+        b.forEach(function(c){ if (!c.opener) failed++; });
+      }).catch(function(){
+        failed += b.length;
+      }).then(function(){
+        done += b.length;
+        busy(btn, "Writing " + Math.min(done, list.length) + " of " + list.length + "…");
+      });
+    });
+  });
+
+  chain.then(function(){
+    unbusy(btn);
+    var wrote = list.length - failed;
+    $("mail-notices").innerHTML = failed
+      ? noticeHTML("warn", wrote + " of " + list.length + " personalised",
+          "<p style='margin:0'>The rest fall back to an opening line built from their company and sector. Run it again to retry those.</p>")
+      : noticeHTML("", "All " + wrote + " personalised",
+          "<p style='margin:0'>Each email now opens on something specific to that person. Step through the preview to read a few before sending.</p>");
+    renderMail();
+  });
+}
+
 function draftEmail(force){
   if (!sampler){
     $("mail-notices").innerHTML = noticeHTML("warn", "Claude isn't available here",
@@ -1862,11 +2036,14 @@ function draftEmail(force){
     "Rules:\n" +
     "- British English. Plain, direct, the way a broker actually writes. No exclamation marks, no 'I hope this finds you well', no 'game-changer', no bullet-point pitch decks.\n" +
     "- Under 130 words in the body. Short paragraphs.\n" +
-    "- Open by naming something true about their business or sector from the brief — not flattery.\n" +
+    "- The body MUST begin with the token {{opener}} on its own, then a blank line. That token is replaced " +
+    "with a line written for each recipient individually, so do not write an opening line yourself and do not " +
+    "repeat what it might say.\n" +
     "- Say concretely what a trade finance facility or FX hedging would do for a business like theirs (supplier payment terms, currency exposure on imports, cash tied up in stock).\n" +
     "- Do NOT state rates, savings percentages, guarantees, or anything that reads as a promise of returns.\n" +
     "- End with one low-friction ask — a short call, a question they can answer in a line.\n" +
-    "- Use these merge tokens where natural: {{firstName}}, {{company}}, {{jobTitle}}. Always open with {{firstName}}.\n" +
+    "- Structure: \"Hi {{firstName}},\" then a blank line, then {{opener}}, then a blank line, then the rest.\n" +
+    "- Use {{company}} and {{jobTitle}} in the body where they read naturally.\n" +
     "- No signature, no sign-off name, no unsubscribe line — those are added separately.\n" +
     "- Subject: under 50 characters, lower-key than a marketing headline, no colon-separated slogan.";
 
