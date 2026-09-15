@@ -1,4 +1,4 @@
-# Dealing Desk
+# Lushsuite
 
 A prospecting-to-outreach tool for an FX / trade finance desk. You describe who you
 want to reach in plain English; it resolves that into a Lusha search, reveals verified
@@ -48,6 +48,31 @@ Published at: https://claude.ai/artifact/TxU8km8LcENoXXxpgk1zgK
 Roughly 500 recipients/day on a personal Gmail, 2,000 on Workspace. The page warns
 above 200 in a single run. Sudden volume spikes from a cold domain are what trip spam
 filtering — warm up gradually and send from the address you want replies on.
+
+## Branding
+
+Palette and typography follow the Ebury brand guidelines:
+
+| Role | Colour | Hex |
+|---|---|---|
+| Hero | Elegant Blue (PMS 2205) | `#74B0CA` |
+| Hero | Warm Black (PMS Black 7) | `#231F20` |
+| Secondary | Dark Blue | `#224862` |
+| Secondary | Digital Blue | `#9FF6F3` |
+| Neutral | Warm White | `#F7F4EE` |
+| Neutral | Light Grey / Grey / Dark Grey / Charcoal | `#F7F7F7` `#E0E0E0` `#A3A3A3` `#737373` |
+
+Warm White is the light ground, Warm Black the dark one; Digital Blue carries the
+accent on dark, Dark Blue on light. Type is Apparat for display and Inter for body,
+per the guidelines. Apparat is licensed and not redistributable, so it is named first
+in the font stack and falls back to Inter — on a machine with Apparat installed it
+renders as intended, everywhere else Inter (the brand's own body face) stands in.
+
+The **ebury wordmark is deliberately not in the published artifact**. That URL is
+shareable, and a page carrying the mark while composing and sending client approaches
+would read as an official Ebury origination system to anyone the link reaches — a
+problem on a regulated firm's financial promotions. There is a marked `LOGO SLOT` in
+the header of `index.html`: drop the SVG in there for an internally hosted copy.
 
 ## On rebuilding Lusha
 

@@ -1,58 +1,78 @@
-<title>Dealing Desk</title>
+<title>Lushsuite</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap">
 <style>
+/* Palette and type per the Ebury brand guidelines.
+   Hero:      Elegant Blue #74B0CA (PMS 2205) · Warm Black #231F20 (PMS Black 7)
+   Neutrals:  Warm White #F7F4EE · Light Grey #F7F7F7 · Grey #E0E0E0
+              Dark Grey #A3A3A3 · Charcoal #737373 · Pure White #FFFFFF
+   Secondary: Dark Blue #224862 · Digital Blue #9FF6F3
+   Type:      Apparat for display, Inter for body. Apparat is a licensed face
+              and isn't redistributable, so it's named first in the stack and
+              falls back to Inter — installed locally, it renders as intended. */
 :root{
-  --ground:#EBEDE8; --surface:#F7F8F5; --raised:#FFFFFF;
-  --ink:#1A1D21; --ink-2:#4A5158; --ink-3:#767E86;
-  --rule:#D3D7D0; --rule-2:#E2E5DF;
-  --accent:#8C2F39; --accent-ink:#FFFFFF; --accent-wash:#F3E4E5;
-  --slate:#3E5C76; --slate-wash:#E4EAEF;
-  --good:#2F6B4F; --good-wash:#E2EDE6;
-  --warn:#8A6A1F; --warn-wash:#F2EBDA;
-  --crit:#A33A2A; --crit-wash:#F6E3DF;
-  --focus:#3E5C76;
+  --elegant-blue:#74B0CA; --warm-black:#231F20; --dark-blue:#224862;
+  --digital-blue:#9FF6F3; --warm-white:#F7F4EE;
+  --grey-light:#F7F7F7; --grey:#E0E0E0; --grey-dark:#A3A3A3; --charcoal:#737373;
+
+  --ground:var(--warm-white); --surface:#FFFFFF; --raised:#FFFFFF;
+  --ink:var(--warm-black); --ink-2:var(--charcoal); --ink-3:var(--grey-dark);
+  --rule:var(--grey); --rule-2:#EDE9E2;
+  --accent:var(--dark-blue); --accent-ink:#FFFFFF; --accent-wash:#E4EFF4;
+  --highlight:var(--digital-blue);
+  --btn-bg:var(--warm-black); --btn-ink:#FFFFFF;
+  --slate:var(--dark-blue); --slate-wash:#E4EFF4;
+  --good:#14532D; --good-wash:#E3EFE7;
+  --warn:#6B4E0A; --warn-wash:#F6EFDC;
+  --crit:#7A1717; --crit-wash:#F8E4E4;
+  --focus:var(--dark-blue);
   --step:clamp(14px,1.6vw,17px);
   color-scheme:light;
 }
 @media (prefers-color-scheme:dark){
   :root:not([data-theme="light"]){
-    --ground:#121518; --surface:#191D21; --raised:#20252A;
-    --ink:#E9EBE6; --ink-2:#A7AEB4; --ink-3:#757D84;
-    --rule:#2C3238; --rule-2:#232930;
-    --accent:#D07680; --accent-ink:#1A1D21; --accent-wash:#332225;
-    --slate:#8FB2CE; --slate-wash:#1E2A34;
-    --good:#7FBE9C; --good-wash:#1B2922;
-    --warn:#D3B169; --warn-wash:#2A2519;
-    --crit:#E08876; --crit-wash:#31201C;
-    --focus:#8FB2CE;
+    --ground:var(--warm-black); --surface:#2B2627; --raised:#342E30;
+    --ink:var(--warm-white); --ink-2:#C4BFB8; --ink-3:var(--grey-dark);
+    --rule:#433C3E; --rule-2:#332D2F;
+    --accent:var(--digital-blue); --accent-ink:var(--warm-black); --accent-wash:#1D3336;
+    --highlight:var(--digital-blue);
+    --btn-bg:var(--warm-white); --btn-ink:var(--warm-black);
+    --slate:var(--elegant-blue); --slate-wash:#1E2F38;
+    --good:#8FD1A0; --good-wash:#1C2A20;
+    --warn:#DCBD72; --warn-wash:#2E2717;
+    --crit:#E79A9A; --crit-wash:#33201F;
+    --focus:var(--elegant-blue);
     color-scheme:dark;
   }
 }
 :root[data-theme="dark"]{
-  --ground:#121518; --surface:#191D21; --raised:#20252A;
-  --ink:#E9EBE6; --ink-2:#A7AEB4; --ink-3:#757D84;
-  --rule:#2C3238; --rule-2:#232930;
-  --accent:#D07680; --accent-ink:#1A1D21; --accent-wash:#332225;
-  --slate:#8FB2CE; --slate-wash:#1E2A34;
-  --good:#7FBE9C; --good-wash:#1B2922;
-  --warn:#D3B169; --warn-wash:#2A2519;
-  --crit:#E08876; --crit-wash:#31201C;
-  --focus:#8FB2CE;
+  --ground:var(--warm-black); --surface:#2B2627; --raised:#342E30;
+  --ink:var(--warm-white); --ink-2:#C4BFB8; --ink-3:var(--grey-dark);
+  --rule:#433C3E; --rule-2:#332D2F;
+  --accent:var(--digital-blue); --accent-ink:var(--warm-black); --accent-wash:#1D3336;
+  --highlight:var(--digital-blue);
+  --btn-bg:var(--warm-white); --btn-ink:var(--warm-black);
+  --slate:var(--elegant-blue); --slate-wash:#1E2F38;
+  --good:#8FD1A0; --good-wash:#1C2A20;
+  --warn:#DCBD72; --warn-wash:#2E2717;
+  --crit:#E79A9A; --crit-wash:#33201F;
+  --focus:var(--elegant-blue);
   color-scheme:dark;
 }
 
 *{box-sizing:border-box}
 body{
   margin:0; background:var(--ground); color:var(--ink);
-  font-family:"IBM Plex Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Arial,sans-serif;
   font-size:var(--step); line-height:1.55; -webkit-font-smoothing:antialiased;
 }
+/* Apparat where it's installed; Inter everywhere else. */
+.display{font-family:Apparat,"Kmr Apparat",Inter,Arial,sans-serif}
 h1,h2,h3{text-wrap:balance;margin:0}
 button,input,textarea,select{font:inherit;color:inherit}
 :focus-visible{outline:2px solid var(--focus);outline-offset:2px;border-radius:2px}
-.mono{font-family:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;font-variant-numeric:tabular-nums}
+.mono{font-family:"Roboto Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;font-variant-numeric:tabular-nums}
 
 /* ---------- chrome ---------- */
 .rail{
@@ -65,10 +85,14 @@ button,input,textarea,select{font:inherit;color:inherit}
   display:flex; align-items:center; gap:20px; flex-wrap:wrap;
 }
 .wordmark{
-  font-family:"Instrument Serif",Georgia,"Times New Roman",serif;
-  font-size:23px; letter-spacing:.01em; white-space:nowrap;
+  font-family:Apparat,"Kmr Apparat",Inter,Arial,sans-serif;
+  font-size:21px; font-weight:400; letter-spacing:-.022em; white-space:nowrap;
+  display:flex; align-items:center; gap:10px;
 }
-.wordmark em{font-style:italic;color:var(--accent)}
+.wordmark em{font-style:normal;color:var(--ink-3);font-size:14px;letter-spacing:0}
+.wordmark .mark{
+  width:9px;height:9px;border-radius:50%;background:var(--elegant-blue);flex:none;
+}
 .steps{display:flex; gap:4px; flex-wrap:wrap; flex:1 1 320px; min-width:0}
 .step{
   display:flex; align-items:baseline; gap:7px; padding:5px 11px 5px 9px;
@@ -80,7 +104,7 @@ button,input,textarea,select{font:inherit;color:inherit}
 .step[data-state="done"]{color:var(--ink-2)}
 .step[data-state="done"] .n::after{content:"✓";margin-left:3px;color:var(--good)}
 .step[data-state="now"]{
-  color:var(--accent); border-color:color-mix(in srgb,var(--accent) 40%,transparent);
+  color:var(--accent); border-color:color-mix(in srgb,var(--elegant-blue) 55%,transparent);
   background:var(--accent-wash); font-weight:600;
 }
 .meter{
@@ -95,7 +119,7 @@ main{max-width:1180px; margin:0 auto; padding:0 20px 88px}
 .brief{padding:clamp(34px,7vh,76px) 0 40px; position:relative}
 .brief::before{
   content:""; position:absolute; inset:-10% -40% 40%; z-index:-1; pointer-events:none;
-  background:radial-gradient(60% 55% at 50% 30%,color-mix(in srgb,var(--accent) 13%,transparent),transparent 70%);
+  background:radial-gradient(58% 52% at 50% 28%,color-mix(in srgb,var(--elegant-blue) 30%,transparent),transparent 70%);
   animation:drift 22s ease-in-out infinite alternate;
 }
 @keyframes drift{from{transform:translate3d(-3%,0,0) scale(1)}to{transform:translate3d(3%,2%,0) scale(1.08)}}
@@ -105,10 +129,14 @@ main{max-width:1180px; margin:0 auto; padding:0 20px 88px}
   text-transform:uppercase; color:var(--ink-3); margin-bottom:14px;
 }
 .brief h1{
-  font-family:"Instrument Serif",Georgia,serif; font-weight:400;
-  font-size:clamp(34px,5.4vw,55px); line-height:1.06; letter-spacing:-.01em;
+  font-family:Apparat,"Kmr Apparat",Inter,Arial,sans-serif; font-weight:400;
+  font-size:clamp(33px,5.2vw,53px); line-height:1.08; letter-spacing:-.035em;
 }
-.brief h1 em{font-style:italic;color:var(--accent)}
+.brief h1 em{font-style:normal;color:var(--dark-blue);box-shadow:inset 0 -.28em 0 var(--digital-blue)}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]) .brief h1 em{color:var(--digital-blue);box-shadow:none}
+}
+:root[data-theme="dark"] .brief h1 em{color:var(--digital-blue);box-shadow:none}
 .brief .sub{color:var(--ink-2); margin:16px 0 26px; max-width:52ch}
 .composer{
   background:var(--surface); border:1px solid var(--rule); border-radius:3px;
@@ -143,8 +171,8 @@ main{max-width:1180px; margin:0 auto; padding:0 20px 88px}
 }
 .btn:hover:not(:disabled){border-color:var(--ink-3)}
 .btn:disabled{opacity:.42;cursor:not-allowed}
-.btn.primary{background:var(--accent); border-color:var(--accent); color:var(--accent-ink); font-weight:600}
-.btn.primary:hover:not(:disabled){filter:brightness(1.08)}
+.btn.primary{background:var(--btn-bg); border-color:var(--btn-bg); color:var(--btn-ink); font-weight:500}
+.btn.primary:hover:not(:disabled){background:var(--dark-blue);border-color:var(--dark-blue);color:#fff}
 .btn.ghost{background:none;border-color:transparent;color:var(--ink-2);padding:8px 10px}
 .btn.ghost:hover:not(:disabled){color:var(--ink);background:var(--rule-2);border-color:transparent}
 .btn.danger{color:var(--crit);border-color:color-mix(in srgb,var(--crit) 35%,transparent)}
@@ -159,7 +187,7 @@ main{max-width:1180px; margin:0 auto; padding:0 20px 88px}
   display:flex; align-items:flex-end; gap:16px; flex-wrap:wrap;
   padding:26px 0 14px; border-bottom:1px solid var(--rule);
 }
-.head h2{font-family:"Instrument Serif",Georgia,serif;font-weight:400;font-size:clamp(24px,3.2vw,33px);line-height:1.1}
+.head h2{font-family:Apparat,"Kmr Apparat",Inter,Arial,sans-serif;font-weight:400;font-size:clamp(23px,3vw,31px);line-height:1.12;letter-spacing:-.03em}
 .head .spacer{flex:1 1 auto}
 .count{font-family:"IBM Plex Mono",monospace;font-size:12.5px;color:var(--ink-3)}
 .count b{color:var(--ink);font-weight:600}
@@ -187,7 +215,7 @@ thead th{
 }
 tbody td{padding:10px 12px; border-bottom:1px solid var(--rule-2); vertical-align:top}
 tbody tr:last-child td{border-bottom:0}
-tbody tr.sel{background:var(--accent-wash)}
+tbody tr.sel{background:var(--accent-wash);box-shadow:inset 3px 0 0 var(--elegant-blue)}
 tbody tr.out{opacity:.4}
 tbody tr.out .nm{text-decoration:line-through}
 .nm{font-weight:600}
@@ -240,13 +268,13 @@ input[type=checkbox]{width:15px;height:15px;accent-color:var(--accent);cursor:po
 .pv-foot{margin-top:16px;padding-top:12px;border-top:1px solid var(--rule-2);font-size:11.5px;color:var(--ink-3);white-space:pre-wrap}
 
 /* ---------- send ---------- */
-.confirm{border:1px solid var(--rule);border-left:3px solid var(--accent);border-radius:3px;background:var(--surface);padding:18px 20px;margin-top:18px}
+.confirm{border:1px solid var(--rule);border-left:3px solid var(--elegant-blue);border-radius:3px;background:var(--surface);padding:18px 20px;margin-top:18px}
 .confirm h3{font-size:15px;margin-bottom:8px}
 .confirm p{margin:0 0 14px;color:var(--ink-2);font-size:14px;max-width:62ch}
 .confirm-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .confirm-row input{width:98px;text-align:center;background:var(--raised);border:1px solid var(--rule);border-radius:2px;padding:8px}
 .bar{height:3px;background:var(--rule-2);border-radius:2px;overflow:hidden;margin:16px 0 6px}
-.bar i{display:block;height:100%;background:var(--accent);width:0;transition:width .3s}
+.bar i{display:block;height:100%;background:var(--elegant-blue);width:0;transition:width .3s}
 .log{max-height:340px;overflow-y:auto;border:1px solid var(--rule);border-radius:3px;background:var(--surface);margin-top:14px}
 .log div{display:flex;gap:11px;align-items:baseline;padding:7px 13px;border-bottom:1px solid var(--rule-2);font-size:12.5px}
 .log div:last-child{border-bottom:0}
@@ -269,7 +297,7 @@ dialog{
 }
 dialog::backdrop{background:rgba(10,12,14,.55)}
 .dlg{padding:20px 22px 22px}
-.dlg h3{font-family:"Instrument Serif",Georgia,serif;font-weight:400;font-size:23px;margin-bottom:6px}
+.dlg h3{font-family:Apparat,"Kmr Apparat",Inter,Arial,sans-serif;font-weight:500;font-size:21px;letter-spacing:-.025em;margin-bottom:6px}
 .dlg p{color:var(--ink-2);font-size:13.5px;margin:0 0 14px}
 .dlg textarea{width:100%;min-height:150px;background:var(--raised);border:1px solid var(--rule);border-radius:2px;padding:10px;font-family:"IBM Plex Mono",monospace;font-size:12.5px;resize:vertical}
 .dlg-foot{display:flex;gap:9px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap}
@@ -281,7 +309,12 @@ dialog::backdrop{background:rgba(10,12,14,.55)}
 
 <header class="rail">
   <div class="rail-in">
-    <div class="wordmark">Dealing <em>Desk</em></div>
+    <!-- LOGO SLOT — for the internally hosted copy, replace the dot below with the
+         ebury wordmark SVG, e.g. <img src="ebury.svg" alt="Ebury" height="18">.
+         Left out of the published artifact on purpose: that URL is shareable, and a
+         page carrying the mark and sending client approaches reads as an official
+         Ebury system to anyone the link reaches. -->
+    <div class="wordmark"><span class="mark" aria-hidden="true"></span>lushsuite <em>origination</em></div>
     <nav class="steps" id="steps"></nav>
     <div class="meter" id="meter"><span>Lusha</span> <b class="mono">—</b> <span>credits</span></div>
   </div>
