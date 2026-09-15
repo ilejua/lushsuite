@@ -1,0 +1,1196 @@
+<title>Dealing Desk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap">
+<style>
+:root{
+  --ground:#EBEDE8; --surface:#F7F8F5; --raised:#FFFFFF;
+  --ink:#1A1D21; --ink-2:#4A5158; --ink-3:#767E86;
+  --rule:#D3D7D0; --rule-2:#E2E5DF;
+  --accent:#8C2F39; --accent-ink:#FFFFFF; --accent-wash:#F3E4E5;
+  --slate:#3E5C76; --slate-wash:#E4EAEF;
+  --good:#2F6B4F; --good-wash:#E2EDE6;
+  --warn:#8A6A1F; --warn-wash:#F2EBDA;
+  --crit:#A33A2A; --crit-wash:#F6E3DF;
+  --focus:#3E5C76;
+  --step:clamp(14px,1.6vw,17px);
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#121518; --surface:#191D21; --raised:#20252A;
+    --ink:#E9EBE6; --ink-2:#A7AEB4; --ink-3:#757D84;
+    --rule:#2C3238; --rule-2:#232930;
+    --accent:#D07680; --accent-ink:#1A1D21; --accent-wash:#332225;
+    --slate:#8FB2CE; --slate-wash:#1E2A34;
+    --good:#7FBE9C; --good-wash:#1B2922;
+    --warn:#D3B169; --warn-wash:#2A2519;
+    --crit:#E08876; --crit-wash:#31201C;
+    --focus:#8FB2CE;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#121518; --surface:#191D21; --raised:#20252A;
+  --ink:#E9EBE6; --ink-2:#A7AEB4; --ink-3:#757D84;
+  --rule:#2C3238; --rule-2:#232930;
+  --accent:#D07680; --accent-ink:#1A1D21; --accent-wash:#332225;
+  --slate:#8FB2CE; --slate-wash:#1E2A34;
+  --good:#7FBE9C; --good-wash:#1B2922;
+  --warn:#D3B169; --warn-wash:#2A2519;
+  --crit:#E08876; --crit-wash:#31201C;
+  --focus:#8FB2CE;
+  color-scheme:dark;
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--ground); color:var(--ink);
+  font-family:"IBM Plex Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  font-size:var(--step); line-height:1.55; -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3{text-wrap:balance;margin:0}
+button,input,textarea,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px;border-radius:2px}
+.mono{font-family:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;font-variant-numeric:tabular-nums}
+
+/* ---------- chrome ---------- */
+.rail{
+  position:sticky; top:env(safe-area-inset-top,0px); z-index:30;
+  background:color-mix(in srgb,var(--ground) 92%,transparent);
+  backdrop-filter:blur(10px); border-bottom:1px solid var(--rule);
+}
+.rail-in{
+  max-width:1180px; margin:0 auto; padding:10px 20px;
+  display:flex; align-items:center; gap:20px; flex-wrap:wrap;
+}
+.wordmark{
+  font-family:"Instrument Serif",Georgia,"Times New Roman",serif;
+  font-size:23px; letter-spacing:.01em; white-space:nowrap;
+}
+.wordmark em{font-style:italic;color:var(--accent)}
+.steps{display:flex; gap:4px; flex-wrap:wrap; flex:1 1 320px; min-width:0}
+.step{
+  display:flex; align-items:baseline; gap:7px; padding:5px 11px 5px 9px;
+  border-radius:999px; border:1px solid transparent; color:var(--ink-3);
+  font-size:13px; white-space:nowrap; background:none; cursor:default;
+}
+.step[data-reachable="1"]{cursor:pointer}
+.step .n{font-family:"IBM Plex Mono",monospace;font-size:11px;opacity:.75}
+.step[data-state="done"]{color:var(--ink-2)}
+.step[data-state="done"] .n::after{content:"✓";margin-left:3px;color:var(--good)}
+.step[data-state="now"]{
+  color:var(--accent); border-color:color-mix(in srgb,var(--accent) 40%,transparent);
+  background:var(--accent-wash); font-weight:600;
+}
+.meter{
+  display:flex; align-items:center; gap:8px; font-size:12px; color:var(--ink-3);
+  border-left:1px solid var(--rule); padding-left:16px; white-space:nowrap;
+}
+.meter b{font-weight:600;color:var(--ink-2)}
+main{max-width:1180px; margin:0 auto; padding:0 20px 88px}
+.view[hidden]{display:none!important}
+
+/* ---------- stage 1 : brief ---------- */
+.brief{padding:clamp(34px,7vh,76px) 0 40px; position:relative}
+.brief::before{
+  content:""; position:absolute; inset:-10% -40% 40%; z-index:-1; pointer-events:none;
+  background:radial-gradient(60% 55% at 50% 30%,color-mix(in srgb,var(--accent) 13%,transparent),transparent 70%);
+  animation:drift 22s ease-in-out infinite alternate;
+}
+@keyframes drift{from{transform:translate3d(-3%,0,0) scale(1)}to{transform:translate3d(3%,2%,0) scale(1.08)}}
+.brief-in{max-width:720px;margin:0 auto}
+.eyebrow{
+  font-family:"IBM Plex Mono",monospace; font-size:11px; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--ink-3); margin-bottom:14px;
+}
+.brief h1{
+  font-family:"Instrument Serif",Georgia,serif; font-weight:400;
+  font-size:clamp(34px,5.4vw,55px); line-height:1.06; letter-spacing:-.01em;
+}
+.brief h1 em{font-style:italic;color:var(--accent)}
+.brief .sub{color:var(--ink-2); margin:16px 0 26px; max-width:52ch}
+.composer{
+  background:var(--surface); border:1px solid var(--rule); border-radius:3px;
+  box-shadow:0 1px 0 var(--rule-2), 0 14px 34px -26px rgba(0,0,0,.5);
+}
+.composer textarea{
+  width:100%; border:0; background:none; resize:vertical; min-height:128px;
+  padding:19px 20px 8px; font-size:17px; line-height:1.5; display:block;
+}
+.composer textarea:focus{outline:none}
+.composer-foot{
+  display:flex; gap:12px; align-items:center; flex-wrap:wrap;
+  padding:11px 14px 13px 20px; border-top:1px solid var(--rule-2);
+}
+.hint{font-size:12.5px;color:var(--ink-3);flex:1 1 200px;min-width:0}
+.examples{margin-top:22px}
+.examples-label{font-size:12px;color:var(--ink-3);margin-bottom:9px}
+.ex{
+  display:block; width:100%; text-align:left; background:none; cursor:pointer;
+  border:0; border-top:1px solid var(--rule-2); padding:11px 2px;
+  color:var(--ink-2); font-size:14px; line-height:1.45; transition:color .15s,padding .15s;
+}
+.ex:last-child{border-bottom:1px solid var(--rule-2)}
+.ex:hover{color:var(--accent); padding-left:8px}
+.ex span{color:var(--ink-3);font-family:"IBM Plex Mono",monospace;font-size:11px;margin-right:9px}
+
+/* ---------- buttons ---------- */
+.btn{
+  border:1px solid var(--rule); background:var(--raised); color:var(--ink);
+  padding:8px 15px; border-radius:2px; cursor:pointer; font-size:14px; font-weight:500;
+  display:inline-flex; align-items:center; gap:8px; transition:background .13s,border-color .13s;
+}
+.btn:hover:not(:disabled){border-color:var(--ink-3)}
+.btn:disabled{opacity:.42;cursor:not-allowed}
+.btn.primary{background:var(--accent); border-color:var(--accent); color:var(--accent-ink); font-weight:600}
+.btn.primary:hover:not(:disabled){filter:brightness(1.08)}
+.btn.ghost{background:none;border-color:transparent;color:var(--ink-2);padding:8px 10px}
+.btn.ghost:hover:not(:disabled){color:var(--ink);background:var(--rule-2);border-color:transparent}
+.btn.danger{color:var(--crit);border-color:color-mix(in srgb,var(--crit) 35%,transparent)}
+.spin{
+  width:13px;height:13px;border:2px solid currentColor;border-right-color:transparent;
+  border-radius:50%;animation:sp .7s linear infinite;flex:none;
+}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+/* ---------- shared panels ---------- */
+.head{
+  display:flex; align-items:flex-end; gap:16px; flex-wrap:wrap;
+  padding:26px 0 14px; border-bottom:1px solid var(--rule);
+}
+.head h2{font-family:"Instrument Serif",Georgia,serif;font-weight:400;font-size:clamp(24px,3.2vw,33px);line-height:1.1}
+.head .spacer{flex:1 1 auto}
+.count{font-family:"IBM Plex Mono",monospace;font-size:12.5px;color:var(--ink-3)}
+.count b{color:var(--ink);font-weight:600}
+
+.chips{display:flex;gap:7px;flex-wrap:wrap;padding:15px 0}
+.chip{
+  display:inline-flex; align-items:center; gap:7px; font-size:12.5px;
+  background:var(--slate-wash); color:var(--slate); border:1px solid color-mix(in srgb,var(--slate) 26%,transparent);
+  border-radius:2px; padding:3px 4px 3px 9px;
+}
+.chip k{font-family:"IBM Plex Mono",monospace;font-size:10.5px;text-transform:uppercase;letter-spacing:.07em;opacity:.7}
+.chip button{background:none;border:0;cursor:pointer;color:inherit;opacity:.6;padding:0 4px;font-size:14px;line-height:1}
+.chip button:hover{opacity:1}
+.chip.add{background:none;color:var(--ink-3);border-style:dashed;cursor:pointer;padding:3px 9px}
+.chip.add:hover{color:var(--accent);border-color:var(--accent)}
+
+/* ---------- table ---------- */
+.tablewrap{overflow-x:auto; border:1px solid var(--rule); border-radius:3px; background:var(--surface); margin-top:6px}
+table{border-collapse:collapse; width:100%; min-width:840px; font-size:13.5px}
+thead th{
+  position:sticky; top:calc(env(safe-area-inset-top,0px) + 53px); z-index:5;
+  background:var(--surface); text-align:left; font-weight:600; font-size:11px;
+  letter-spacing:.09em; text-transform:uppercase; color:var(--ink-3);
+  padding:10px 12px; border-bottom:1px solid var(--rule); white-space:nowrap;
+}
+tbody td{padding:10px 12px; border-bottom:1px solid var(--rule-2); vertical-align:top}
+tbody tr:last-child td{border-bottom:0}
+tbody tr.sel{background:var(--accent-wash)}
+tbody tr.out{opacity:.4}
+tbody tr.out .nm{text-decoration:line-through}
+.nm{font-weight:600}
+.sm{color:var(--ink-3);font-size:12px}
+.co{color:var(--ink-2)}
+td.pick{width:38px;padding-left:14px}
+td.act{width:34px;text-align:right;padding-right:10px}
+input[type=checkbox]{width:15px;height:15px;accent-color:var(--accent);cursor:pointer;margin:2px 0 0}
+.x{background:none;border:0;cursor:pointer;color:var(--ink-3);font-size:15px;line-height:1;padding:2px 5px;border-radius:2px}
+.x:hover{color:var(--crit);background:var(--crit-wash)}
+.pill{
+  display:inline-block; font-family:"IBM Plex Mono",monospace; font-size:10.5px;
+  letter-spacing:.05em; text-transform:uppercase; padding:2px 6px; border-radius:2px; white-space:nowrap;
+}
+.pill.ok{background:var(--good-wash);color:var(--good)}
+.pill.cost{background:var(--warn-wash);color:var(--warn)}
+.pill.no{background:var(--rule-2);color:var(--ink-3)}
+.pill.err{background:var(--crit-wash);color:var(--crit)}
+.pill.crm{background:var(--slate-wash);color:var(--slate)}
+
+.bulk{
+  display:flex; gap:10px; align-items:center; flex-wrap:wrap;
+  padding:12px 0; position:sticky; bottom:0; z-index:20;
+  background:linear-gradient(to top,var(--ground) 72%,transparent);
+}
+
+/* ---------- compose ---------- */
+.split{display:grid; grid-template-columns:minmax(0,1.08fr) minmax(0,.92fr); gap:26px; align-items:start; padding-top:18px}
+@media(max-width:860px){.split{grid-template-columns:1fr}}
+.field{display:flex;flex-direction:column;gap:6px;margin-bottom:16px}
+.field label{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);font-weight:600}
+.field input,.field textarea{
+  background:var(--surface); border:1px solid var(--rule); border-radius:2px;
+  padding:9px 11px; width:100%; line-height:1.55;
+}
+.field textarea{min-height:250px;resize:vertical;font-size:14.5px}
+.field input:focus,.field textarea:focus{outline:none;border-color:var(--focus);box-shadow:0 0 0 3px color-mix(in srgb,var(--focus) 16%,transparent)}
+.tokens{display:flex;gap:5px;flex-wrap:wrap;margin-top:3px}
+.tok{
+  font-family:"IBM Plex Mono",monospace;font-size:11px;background:var(--rule-2);
+  border:1px solid var(--rule);border-radius:2px;padding:2px 6px;cursor:pointer;color:var(--ink-2);
+}
+.tok:hover{border-color:var(--accent);color:var(--accent)}
+.preview{border:1px solid var(--rule); border-radius:3px; background:var(--raised); position:sticky; top:96px}
+.pv-head{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--rule-2);flex-wrap:wrap}
+.pv-head .who{flex:1 1 140px;min-width:0;font-size:12.5px;color:var(--ink-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pv-body{padding:16px 18px 20px}
+.pv-subj{font-weight:600;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--rule-2)}
+.pv-text{white-space:pre-wrap;font-size:14px;line-height:1.62;color:var(--ink-2)}
+.pv-foot{margin-top:16px;padding-top:12px;border-top:1px solid var(--rule-2);font-size:11.5px;color:var(--ink-3);white-space:pre-wrap}
+
+/* ---------- send ---------- */
+.confirm{border:1px solid var(--rule);border-left:3px solid var(--accent);border-radius:3px;background:var(--surface);padding:18px 20px;margin-top:18px}
+.confirm h3{font-size:15px;margin-bottom:8px}
+.confirm p{margin:0 0 14px;color:var(--ink-2);font-size:14px;max-width:62ch}
+.confirm-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.confirm-row input{width:98px;text-align:center;background:var(--raised);border:1px solid var(--rule);border-radius:2px;padding:8px}
+.bar{height:3px;background:var(--rule-2);border-radius:2px;overflow:hidden;margin:16px 0 6px}
+.bar i{display:block;height:100%;background:var(--accent);width:0;transition:width .3s}
+.log{max-height:340px;overflow-y:auto;border:1px solid var(--rule);border-radius:3px;background:var(--surface);margin-top:14px}
+.log div{display:flex;gap:11px;align-items:baseline;padding:7px 13px;border-bottom:1px solid var(--rule-2);font-size:12.5px}
+.log div:last-child{border-bottom:0}
+.log .addr{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink-2)}
+
+/* ---------- notices ---------- */
+.notice{
+  border:1px solid var(--rule); border-left:3px solid var(--slate); background:var(--surface);
+  border-radius:3px; padding:14px 17px; margin:16px 0; font-size:13.5px; color:var(--ink-2);
+}
+.notice.bad{border-left-color:var(--crit)}
+.notice.warn{border-left-color:var(--warn)}
+.notice strong{color:var(--ink);display:block;margin-bottom:4px;font-size:14px}
+.notice code{font-family:"IBM Plex Mono",monospace;font-size:12px;background:var(--rule-2);padding:1px 4px;border-radius:2px}
+.empty{text-align:center;padding:52px 20px;color:var(--ink-3)}
+
+dialog{
+  border:1px solid var(--rule); border-radius:3px; background:var(--surface); color:var(--ink);
+  padding:0; max-width:520px; width:calc(100% - 32px); box-shadow:0 30px 70px -30px rgba(0,0,0,.6);
+}
+dialog::backdrop{background:rgba(10,12,14,.55)}
+.dlg{padding:20px 22px 22px}
+.dlg h3{font-family:"Instrument Serif",Georgia,serif;font-weight:400;font-size:23px;margin-bottom:6px}
+.dlg p{color:var(--ink-2);font-size:13.5px;margin:0 0 14px}
+.dlg textarea{width:100%;min-height:150px;background:var(--raised);border:1px solid var(--rule);border-radius:2px;padding:10px;font-family:"IBM Plex Mono",monospace;font-size:12.5px;resize:vertical}
+.dlg-foot{display:flex;gap:9px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap}
+
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}
+}
+</style>
+
+<header class="rail">
+  <div class="rail-in">
+    <div class="wordmark">Dealing <em>Desk</em></div>
+    <nav class="steps" id="steps"></nav>
+    <div class="meter" id="meter"><span>Lusha</span> <b class="mono">—</b> <span>credits</span></div>
+  </div>
+</header>
+
+<main>
+  <!-- ======================= 1. BRIEF ======================= -->
+  <section class="view brief" id="v-brief">
+    <div class="brief-in">
+      <div class="eyebrow">Origination — Trade Finance &amp; FX</div>
+      <h1>Describe the book you want to <em>build</em>.</h1>
+      <p class="sub">Write it the way you'd brief a junior: sector, geography, who signs off. The desk resolves it into a Lusha search, reveals verified work emails, and drafts the approach.</p>
+
+      <div class="composer">
+        <label for="brief-text" class="sr" style="position:absolute;left:-9999px">Prospecting brief</label>
+        <textarea id="brief-text" placeholder="e.g. UK aviation and aerospace businesses that import parts and would benefit from a trade finance facility — I want CFOs and finance directors."></textarea>
+        <div class="composer-foot">
+          <span class="hint" id="brief-hint">Search costs 1 Lusha credit per 25 results. Revealing an email costs 1 credit each.</span>
+          <button class="btn ghost" id="btn-crm" type="button">CRM exclusions</button>
+          <button class="btn primary" id="btn-find" type="button">Find prospects</button>
+        </div>
+      </div>
+
+      <div id="brief-error"></div>
+
+      <div class="examples">
+        <div class="examples-label">Recent shapes of brief</div>
+        <button class="ex" type="button"><span>AVI</span>UK aviation &amp; aerospace importers — CFOs, finance directors and heads of treasury who'd benefit from a trade finance facility.</button>
+        <button class="ex" type="button"><span>FMD</span>Food &amp; beverage wholesalers and importers in the UK, 50–500 staff, paying suppliers in EUR and USD. Finance decision makers only.</button>
+        <button class="ex" type="button"><span>MFG</span>UK manufacturers with overseas supply chains — group treasurers, financial controllers and CFOs for FX hedging conversations.</button>
+        <button class="ex" type="button"><span>LOG</span>Freight forwarding and logistics companies in the UK and Ireland. Anyone senior in finance.</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================= 2. PROSPECTS ======================= -->
+  <section class="view" id="v-list" hidden>
+    <div class="head">
+      <h2>Prospects</h2>
+      <div class="spacer"></div>
+      <div class="count" id="list-count"></div>
+    </div>
+    <div class="chips" id="filter-chips"></div>
+    <div id="list-notices"></div>
+    <div class="tablewrap" id="list-wrap"></div>
+    <div class="bulk" id="list-bulk"></div>
+  </section>
+
+  <!-- ======================= 3. MESSAGE ======================= -->
+  <section class="view" id="v-mail" hidden>
+    <div class="head">
+      <h2>The approach</h2>
+      <div class="spacer"></div>
+      <div class="count" id="mail-count"></div>
+    </div>
+    <div class="split">
+      <div>
+        <div id="mail-notices"></div>
+        <div class="field">
+          <label for="m-subject">Subject line</label>
+          <input id="m-subject" type="text" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="m-body">Body</label>
+          <textarea id="m-body"></textarea>
+          <div class="tokens" id="tok-row"></div>
+        </div>
+        <div class="field">
+          <label for="m-sig">Signature &amp; sender identification</label>
+          <textarea id="m-sig" style="min-height:120px;font-size:13.5px"></textarea>
+        </div>
+        <div style="display:flex;gap:9px;flex-wrap:wrap">
+          <button class="btn" id="btn-redraft" type="button">Redraft with Claude</button>
+          <button class="btn ghost" id="btn-back-list" type="button">← Back to list</button>
+          <div style="flex:1"></div>
+          <button class="btn primary" id="btn-to-send" type="button">Review &amp; send →</button>
+        </div>
+      </div>
+      <aside class="preview">
+        <div class="pv-head">
+          <button class="btn ghost" id="pv-prev" type="button" aria-label="Previous recipient">←</button>
+          <div class="who mono" id="pv-who">—</div>
+          <button class="btn ghost" id="pv-next" type="button" aria-label="Next recipient">→</button>
+        </div>
+        <div class="pv-body">
+          <div class="pv-subj" id="pv-subj">—</div>
+          <div class="pv-text" id="pv-text"></div>
+          <div class="pv-foot" id="pv-foot"></div>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ======================= 4. SEND ======================= -->
+  <section class="view" id="v-send" hidden>
+    <div class="head">
+      <h2>Send</h2>
+      <div class="spacer"></div>
+      <div class="count" id="send-count"></div>
+    </div>
+    <div id="send-notices"></div>
+    <div class="confirm" id="send-confirm"></div>
+    <div id="send-progress" hidden>
+      <div class="bar"><i id="send-bar"></i></div>
+      <div class="count" id="send-status"></div>
+      <div class="log" id="send-log"></div>
+    </div>
+  </section>
+</main>
+
+<dialog id="dlg-crm">
+  <form method="dialog" class="dlg">
+    <h3>CRM exclusions</h3>
+    <p>Anyone here is struck from every search — so contacts already on the book never get approached twice. One per line: a full email address, or a domain to exclude the whole company. Kept in this browser only.</p>
+    <textarea id="crm-text" placeholder="j.smith@example.co.uk&#10;alreadyaclient.com"></textarea>
+    <div class="dlg-foot">
+      <button class="btn" value="cancel" type="submit">Cancel</button>
+      <button class="btn primary" value="save" type="submit" id="crm-save">Save exclusions</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+(function(){
+"use strict";
+
+/* ============================================================
+   State
+   ============================================================ */
+var S = {
+  stage: 0,                 // 0 brief, 1 list, 2 mail, 3 send
+  reached: 0,
+  brief: "",
+  filters: null,            // parsed, human-editable
+  contacts: [],             // {id, first, last, title, company, domain, city, country, seniority, revealCost, email, emailState}
+  total: 0,
+  removed: {},              // id -> true (struck this session)
+  selected: {},             // id -> true
+  crm: [],                  // exclusion strings
+  mail: { subject:"", body:"", sig:"" },
+  pvIndex: 0,
+  sending: false
+};
+
+var mcp = null, sampler = null, bootDone = false;
+var LUSHA = "Lusha", GMAIL = "Gmail";
+var $ = function(id){ return document.getElementById(id); };
+
+/* ============================================================
+   Small helpers
+   ============================================================ */
+function esc(s){
+  return String(s == null ? "" : s).replace(/[&<>"']/g, function(c){
+    return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
+  });
+}
+function noticeHTML(kind, title, body){
+  return '<div class="notice ' + kind + '"><strong>' + esc(title) + '</strong>' + body + '</div>';
+}
+function loadCRM(){
+  try {
+    var raw = localStorage.getItem("desk.crm");
+    S.crm = raw ? JSON.parse(raw) : [];
+  } catch(e){ S.crm = []; }
+  if (!Array.isArray(S.crm)) S.crm = [];
+}
+function saveCRM(){
+  try { localStorage.setItem("desk.crm", JSON.stringify(S.crm)); } catch(e){}
+}
+function loadSig(){
+  try {
+    var raw = localStorage.getItem("desk.sig");
+    if (raw) S.mail.sig = raw;
+  } catch(e){}
+}
+function saveSig(){
+  try { localStorage.setItem("desk.sig", S.mail.sig); } catch(e){}
+}
+/* A contact is excluded when its email matches, or its company domain matches. */
+function isExcluded(c){
+  if (!S.crm.length) return false;
+  var dom = String(c.domain || "").toLowerCase().replace(/^www\./, "");
+  var mail = String(c.email || "").toLowerCase();
+  for (var i = 0; i < S.crm.length; i++){
+    var r = S.crm[i];
+    if (!r) continue;
+    if (r.indexOf("@") >= 0){ if (mail && mail === r) return true; }
+    else if (dom && (dom === r || dom.slice(-(r.length + 1)) === "." + r)) return true;
+  }
+  return false;
+}
+function live(){
+  return S.contacts.filter(function(c){ return !S.removed[c.id] && !isExcluded(c); });
+}
+function chosen(){
+  return live().filter(function(c){ return S.selected[c.id]; });
+}
+function sendable(){
+  return chosen().filter(function(c){ return c.email; });
+}
+
+/* ============================================================
+   Connector plumbing — every failure code gets its own fix
+   ============================================================ */
+var FIX = {
+  needs_reauth: function(s){ return "Your " + s + " connection has expired. Reconnect it in claude.ai → Settings → Connectors, then reload this page."; },
+  server_not_connected: function(s){ return "No " + s + " connector is available on your account. Add it in claude.ai → Settings → Connectors, then reload this page."; },
+  selection_required: function(s){ return "You have more than one " + s + " connector. Pick which one this page should use when claude.ai asks, then try again."; },
+  not_in_manifest: function(s){ return "This page isn't allowed to use " + s + " for you — the connector was switched off for it, or declined. Turn it back on from the artifact's connector settings."; },
+  blocked_by_policy: function(s){ return "Your organisation's policy blocks this page from calling " + s + "."; },
+  approval_required: function(s){ return "Your organisation requires per-call approval for " + s + ", which published pages can't request yet."; },
+  server_unavailable: function(s){ return s + " didn't respond. It's usually brief — try again in a moment."; },
+  rate_limited: function(s){ return "Too many calls to " + s + " at once. Wait a few seconds and try again."; },
+  tool_error: function(s, m){ return s + " rejected the request: " + m; },
+  bad_request: function(s, m){ return "The desk built a request " + s + " wouldn't accept: " + m; },
+  cancelled: function(){ return "Cancelled."; },
+  not_granted: function(){ return "This page hasn't been granted connector access in your viewer."; },
+  capability_disabled: function(){ return "Connectors aren't available in this view. Open the artifact on claude.ai."; },
+  capability_removed: function(){ return "Connectors aren't available in this view. Open the artifact on claude.ai."; },
+  consent_required: function(s){ return "Allow this page to use " + s + " when prompted, then try again."; },
+  user_changed: function(){ return "The signed-in account changed. Reload the page."; }
+};
+function explain(err, server){
+  var code = (err && err.code) || "upstream_error";
+  var fn = FIX[code];
+  if (fn) return fn(server, (err && err.message) || "");
+  return (err && err.message) || ("Something went wrong talking to " + server + ".");
+}
+function isRetryable(err){ return !!(err && err.retryable === true); }
+
+function call(server, tool, input, opts){
+  if (!mcp) return Promise.reject({ code:"capability_disabled", message:"no mcp" });
+  return mcp.callTool(server, tool, input, opts).then(function(r){ return r.payload; });
+}
+/* Reads may be retried exactly once, and only when the runtime stamped them retryable. */
+function readOnce(server, tool, input){
+  return call(server, tool, input).catch(function(e){
+    if (!isRetryable(e)) throw e;
+    var wait = Math.min(e.retryAfterMs || 1200, 4000) + Math.random() * 400;
+    return new Promise(function(res){ setTimeout(res, wait); }).then(function(){
+      return call(server, tool, input);
+    });
+  });
+}
+
+/* ============================================================
+   Boot
+   ============================================================ */
+function boot(){
+  loadCRM();
+  loadSig();
+  if (!S.mail.sig){
+    S.mail.sig = "Kayln Stock\nFX & Trade Finance\n\n—\nYou're receiving this because of your role in finance at {{company}}. Reply \"no thanks\" and I won't contact you again.";
+  }
+  renderSteps();
+  bindStatic();
+  renderExamples();
+
+  if (!window.claude || typeof window.claude.use !== "function"){
+    offline();
+    return;
+  }
+  Promise.all([
+    window.claude.use("mcp").catch(function(){ return null; }),
+    window.claude.use("sample").catch(function(){ return null; })
+  ]).then(function(r){
+    mcp = r[0]; sampler = r[1]; bootDone = true;
+    if (!mcp) { offline(); return; }
+    return mcp.listTools().then(function(res){
+      var names = (res.servers || []).map(function(s){ return s.server; });
+      var missing = [];
+      if (names.indexOf(LUSHA) < 0) missing.push(LUSHA);
+      if (names.indexOf(GMAIL) < 0) missing.push(GMAIL);
+      if (missing.length){
+        $("brief-error").innerHTML = noticeHTML("warn", "Connector not found: " + missing.join(", "),
+          "<p style='margin:0'>Add " + esc(missing.join(" and ")) + " in claude.ai → Settings → Connectors and reload. " +
+          "If the name differs on your account, this page is looking for them under exactly <code>" + esc(missing.join("</code> and <code>")) + "</code>.</p>");
+      }
+      refreshMeter();
+    }).catch(function(){ refreshMeter(); });
+  });
+}
+function offline(){
+  bootDone = true;
+  $("brief-error").innerHTML = noticeHTML("bad", "Open this on claude.ai to use it",
+    "<p style='margin:0'>The desk needs your Lusha and Gmail connectors, which only run when the page is opened from your Claude artifacts — not from a saved copy of the file.</p>");
+  $("btn-find").disabled = true;
+}
+function refreshMeter(){
+  readOnce(LUSHA, "account_usage", {}).then(function(p){
+    var c = p && p.credits;
+    if (!c) return;
+    $("meter").innerHTML = '<span>Lusha</span> <b class="mono">' +
+      Number(c.remaining).toLocaleString("en-GB") + '</b> <span>credits left</span>';
+  }).catch(function(){
+    $("meter").innerHTML = '<span class="mono" style="color:var(--ink-3)">credits unavailable</span>';
+  });
+}
+
+/* ============================================================
+   Navigation
+   ============================================================ */
+var STEPS = ["Brief", "Prospects", "Message", "Send"];
+function renderSteps(){
+  var h = "";
+  for (var i = 0; i < STEPS.length; i++){
+    var st = i === S.stage ? "now" : (i < S.stage ? "done" : "todo");
+    var ok = i <= S.reached ? "1" : "0";
+    h += '<button class="step" type="button" data-state="' + st + '" data-reachable="' + ok + '" data-go="' + i + '"' +
+         (ok === "1" ? "" : " disabled") + '><span class="n">' + (i + 1) + '</span>' + STEPS[i] + '</button>';
+  }
+  $("steps").innerHTML = h;
+}
+function go(n){
+  if (n > S.reached) return;
+  S.stage = n;
+  var ids = ["v-brief", "v-list", "v-mail", "v-send"];
+  for (var i = 0; i < ids.length; i++) $(ids[i]).hidden = (i !== n);
+  renderSteps();
+  window.scrollTo({ top:0, behavior:"smooth" });
+  if (n === 2) renderMail();
+  if (n === 3) renderSend();
+}
+function reach(n){ if (n > S.reached) S.reached = n; }
+
+/* ============================================================
+   Stage 1 — brief → structured Lusha filters
+   ============================================================ */
+function renderExamples(){
+  var list = document.querySelectorAll(".ex");
+  for (var i = 0; i < list.length; i++){
+    list[i].addEventListener("click", function(){
+      var t = this.textContent.replace(/^[A-Z]{3}/, "").trim();
+      $("brief-text").value = t;
+      $("brief-text").focus();
+    });
+  }
+}
+function bindStatic(){
+  $("steps").addEventListener("click", function(e){
+    var b = e.target.closest("[data-go]");
+    if (b && b.getAttribute("data-reachable") === "1") go(Number(b.getAttribute("data-go")));
+  });
+  $("btn-find").addEventListener("click", startSearch);
+  $("brief-text").addEventListener("keydown", function(e){
+    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") startSearch();
+  });
+  $("btn-crm").addEventListener("click", function(){
+    $("crm-text").value = S.crm.join("\n");
+    $("dlg-crm").showModal();
+  });
+  $("dlg-crm").addEventListener("close", function(){
+    if ($("dlg-crm").returnValue !== "save") return;
+    S.crm = $("crm-text").value.split("\n").map(function(l){
+      return l.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/.*$/, "");
+    }).filter(Boolean);
+    saveCRM();
+    if (S.reached >= 1) renderList();
+  });
+  $("btn-back-list").addEventListener("click", function(){ go(1); });
+  $("btn-to-send").addEventListener("click", function(){ reach(3); go(3); });
+  $("btn-redraft").addEventListener("click", function(){ draftEmail(true); });
+  $("m-subject").addEventListener("input", function(){ S.mail.subject = this.value; renderPreview(); });
+  $("m-body").addEventListener("input", function(){ S.mail.body = this.value; renderPreview(); });
+  $("m-sig").addEventListener("input", function(){ S.mail.sig = this.value; saveSig(); renderPreview(); });
+  $("pv-prev").addEventListener("click", function(){ stepPreview(-1); });
+  $("pv-next").addEventListener("click", function(){ stepPreview(1); });
+}
+
+function busy(btn, label){
+  btn.disabled = true;
+  btn.dataset.was = btn.innerHTML;
+  btn.innerHTML = '<span class="spin"></span>' + label;
+}
+function unbusy(btn){
+  btn.disabled = false;
+  if (btn.dataset.was) btn.innerHTML = btn.dataset.was;
+}
+
+function startSearch(){
+  var text = $("brief-text").value.trim();
+  if (!text){ $("brief-text").focus(); return; }
+  if (!mcp){ return; }
+  S.brief = text;
+  $("brief-error").innerHTML = "";
+  var btn = $("btn-find");
+  busy(btn, "Reading the brief…");
+
+  taxonomies()
+    .then(function(tax){
+      busy(btn, "Resolving filters…");
+      return parseBrief(text, tax);
+    })
+    .then(function(f){
+      S.filters = f;
+      busy(btn, "Searching Lusha…");
+      return runSearch(f);
+    })
+    .then(function(){
+      unbusy(btn);
+      reach(1); go(1);
+      renderList();
+    })
+    .catch(function(e){
+      unbusy(btn);
+      $("brief-error").innerHTML = noticeHTML("bad", "Couldn't run that search",
+        "<p style='margin:0'>" + esc(e && e.__page ? e.message : explain(e, e && e.__server || LUSHA)) + "</p>");
+    });
+}
+
+var _tax = null;
+function taxonomies(){
+  if (_tax) return Promise.resolve(_tax);
+  return Promise.all([
+    readOnce(LUSHA, "prospecting_company_filters", { type:"industries_labels" }),
+    readOnce(LUSHA, "prospecting_contact_filters", { type:"seniority" }),
+    readOnce(LUSHA, "prospecting_contact_filters", { type:"departments" })
+  ]).then(function(r){
+    _tax = {
+      industries: (r[0] && r[0].values) || [],
+      seniority: (r[1] && r[1].values) || [],
+      departments: (r[2] && r[2].values) || []
+    };
+    return _tax;
+  }).catch(function(e){ e.__server = LUSHA; throw e; });
+}
+
+function parseBrief(text, tax){
+  if (!sampler){
+    var e = new Error("Claude isn't available in this view, so the brief can't be turned into a search. Open the page on claude.ai.");
+    e.__page = true; return Promise.reject(e);
+  }
+  var industryLines = tax.industries.map(function(m){
+    return m.main_industry + ": " + m.sub_industries.map(function(s){ return s.value + "=" + s.id; }).join(", ");
+  }).join("\n");
+  var seniorityLine = tax.seniority.map(function(s){ return s.name + "=" + s.id; }).join(", ");
+
+  var prompt =
+    "You turn a B2B sales brief into a Lusha prospecting filter set. Reply with ONLY a JSON object.\n\n" +
+    "BRIEF:\n" + text + "\n\n" +
+    "AVAILABLE SUB-INDUSTRIES (name=id):\n" + industryLines + "\n\n" +
+    "SENIORITY (name=id): " + seniorityLine + "\n" +
+    "DEPARTMENTS: " + tax.departments.join(", ") + "\n\n" +
+    "Rules:\n" +
+    "- subIndustryIds: pick every sub-industry id the brief plausibly covers. Include adjacent ones (an 'aviation' brief covers both air services and aerospace manufacturing). Empty array if the brief names no sector.\n" +
+    "- countries: full country names as written in the brief, e.g. [\"United Kingdom\"]. Default to [\"United Kingdom\"] if none is named.\n" +
+    "- departments: only from the DEPARTMENTS list. A brief about finance/treasury/trade finance buyers means [\"Finance\"].\n" +
+    "- seniorityIds: ids from SENIORITY. Decision-maker briefs usually mean c-suite, vice president and director.\n" +
+    "- jobTitles: free-text titles worth targeting, at most 8, only if the brief implies specific roles.\n" +
+    "- sizeMin/sizeMax: employee headcount bounds, or null.\n" +
+    "- keywords: at most 5 company keywords, only when the brief names a real business characteristic (e.g. \"importer\"). Otherwise [].\n" +
+    "- summary: one short sentence, max 15 words, describing who this finds.\n\n" +
+    'Shape: {"subIndustryIds":[130],"countries":["United Kingdom"],"departments":["Finance"],' +
+    '"seniorityIds":[9,8,6],"jobTitles":["Chief Financial Officer"],"sizeMin":null,"sizeMax":null,' +
+    '"keywords":[],"summary":"UK aviation finance decision makers"}';
+
+  return sampler.json(prompt, { modelTier:"default" }).then(function(f){
+    f = f || {};
+    return {
+      subIndustryIds: Array.isArray(f.subIndustryIds) ? f.subIndustryIds.map(Number).filter(function(n){ return !isNaN(n); }).slice(0,100) : [],
+      countries: Array.isArray(f.countries) && f.countries.length ? f.countries.map(String).slice(0,10) : ["United Kingdom"],
+      departments: Array.isArray(f.departments) ? f.departments.map(String).slice(0,16) : [],
+      seniorityIds: Array.isArray(f.seniorityIds) ? f.seniorityIds.map(Number).filter(function(n){ return !isNaN(n); }) : [],
+      jobTitles: Array.isArray(f.jobTitles) ? f.jobTitles.map(String).slice(0,8) : [],
+      sizeMin: typeof f.sizeMin === "number" ? f.sizeMin : null,
+      sizeMax: typeof f.sizeMax === "number" ? f.sizeMax : null,
+      keywords: Array.isArray(f.keywords) ? f.keywords.map(String).slice(0,5) : [],
+      summary: typeof f.summary === "string" ? f.summary : ""
+    };
+  }).catch(function(err){
+    var m = { not_granted:"You declined Claude for this page, so briefs can't be read. Reload and allow it, or reload and try again.",
+              rate_limited:"Claude is rate-limited right now. Give it a minute and try again.",
+              invalid_json:"Claude's answer didn't come back as a filter set. Try rewording the brief a little.",
+              refused:"Claude declined to read that brief. Try describing the sector and roles more plainly." };
+    var e = new Error(m[err && err.code] || "Couldn't turn that brief into a search. Try rewording it.");
+    e.__page = true; throw e;
+  });
+}
+
+function toLushaInput(f, page){
+  var q = {
+    page: page,
+    page_size: 50,
+    existing_data_points: ["work_email"],
+    departments: f.departments.length ? f.departments : undefined,
+    seniority: f.seniorityIds.length ? f.seniorityIds : undefined,
+    subIndustriesIds: f.subIndustryIds.length ? f.subIndustryIds : undefined,
+    companyLocations: f.countries.map(function(c){ return { country: c }; }),
+    jobTitles: f.jobTitles.length ? f.jobTitles : undefined,
+    keywords: f.keywords.length ? f.keywords : undefined
+  };
+  if (f.sizeMin != null || f.sizeMax != null){
+    var r = {};
+    if (f.sizeMin != null) r.min = f.sizeMin;
+    if (f.sizeMax != null) r.max = f.sizeMax;
+    q.sizesFilterOption = [r];
+  }
+  Object.keys(q).forEach(function(k){ if (q[k] === undefined) delete q[k]; });
+  return q;
+}
+
+function runSearch(f){
+  S.contacts = []; S.removed = {}; S.selected = {}; S.total = 0;
+  var pages = [0, 1];
+  var chain = Promise.resolve();
+  pages.forEach(function(p){
+    chain = chain.then(function(){
+      if (p > 0 && S.contacts.length >= S.total) return;
+      return call(LUSHA, "prospecting_contact_search", toLushaInput(f, p)).then(function(res){
+        if (!res) return;
+        S.total = (res.pagination && res.pagination.total) || S.contacts.length;
+        (res.results || []).forEach(function(r){
+          var reveal = (r.canReveal || []).filter(function(x){ return x.field === "emails"; })[0];
+          S.contacts.push({
+            id: r.id,
+            first: r.firstName || "",
+            last: r.lastName || "",
+            title: (r.jobTitle && r.jobTitle.title) || "",
+            seniority: (r.jobTitle && r.jobTitle.seniority) || "",
+            company: (r.company && r.company.name) || "",
+            domain: (r.company && r.company.domain) || "",
+            city: (r.location && r.location.city) || "",
+            country: (r.location && r.location.country) || "",
+            hasEmail: (r.has || []).indexOf("emails") >= 0,
+            revealCost: reveal ? Number(reveal.credits) : null,
+            email: "", emailState: "hidden"
+          });
+        });
+      });
+    });
+  });
+  return chain.then(function(){
+    S.contacts.forEach(function(c){ if (!isExcluded(c)) S.selected[c.id] = true; });
+  }).catch(function(e){ e.__server = LUSHA; throw e; });
+}
+
+/* ============================================================
+   Stage 2 — the list
+   ============================================================ */
+function renderList(){
+  var l = live(), sel = chosen(), withMail = sel.filter(function(c){ return c.email; }).length;
+  var excluded = S.contacts.filter(isExcluded).length;
+
+  $("list-count").innerHTML =
+    '<b>' + l.length + '</b> shown of ' + S.total.toLocaleString("en-GB") + ' matches · ' +
+    '<b>' + sel.length + '</b> selected · <b>' + withMail + '</b> with an email';
+
+  // filter chips
+  var f = S.filters || {}, chips = [];
+  function chip(k, v, key, val){
+    chips.push('<span class="chip"><k>' + esc(k) + '</k>' + esc(v) +
+      '<button type="button" data-drop="' + key + '" data-val="' + esc(String(val)) + '" aria-label="Remove ' + esc(v) + '">×</button></span>');
+  }
+  (f.countries || []).forEach(function(c){ chip("geo", c, "countries", c); });
+  (f.departments || []).forEach(function(d){ chip("dept", d, "departments", d); });
+  (f.seniorityIds || []).forEach(function(id){
+    var n = (_tax ? _tax.seniority : []).filter(function(s){ return s.id === id; })[0];
+    chip("level", n ? n.name : String(id), "seniorityIds", id);
+  });
+  (f.subIndustryIds || []).forEach(function(id){
+    var nm = "";
+    ((_tax && _tax.industries) || []).forEach(function(m){
+      m.sub_industries.forEach(function(s){ if (s.id === id) nm = s.value; });
+    });
+    chip("sector", nm || String(id), "subIndustryIds", id);
+  });
+  (f.jobTitles || []).forEach(function(t){ chip("title", t, "jobTitles", t); });
+  (f.keywords || []).forEach(function(t){ chip("keyword", t, "keywords", t); });
+  $("filter-chips").innerHTML = chips.join("") +
+    '<button class="chip add" type="button" id="chip-rerun">Re-run search</button>';
+
+  // notices
+  var nz = "";
+  if (excluded) nz += noticeHTML("", excluded + " struck by your CRM exclusions",
+    "<p style='margin:0'>They're hidden from this list and can't be mailed. Edit the list from the brief screen.</p>");
+  if (!l.length) nz += noticeHTML("warn", "Nothing came back",
+    "<p style='margin:0'>Loosen the brief — a narrower sector, a wider seniority range, or drop a filter chip above and re-run.</p>");
+  $("list-notices").innerHTML = nz;
+
+  // table
+  if (!l.length){
+    $("list-wrap").innerHTML = '<div class="empty">No prospects to show.</div>';
+    $("list-bulk").innerHTML = "";
+    return;
+  }
+  var rows = l.map(function(c){
+    var mail;
+    if (c.email) mail = '<span class="mono" style="font-size:12.5px">' + esc(c.email) + '</span>';
+    else if (c.emailState === "failed") mail = '<span class="pill err">no email found</span>';
+    else if (c.revealCost === 0) mail = '<span class="pill ok">free reveal</span>';
+    else if (c.revealCost > 0) mail = '<span class="pill cost">' + c.revealCost + ' credit' + (c.revealCost === 1 ? "" : "s") + '</span>';
+    else mail = '<span class="pill no">unavailable</span>';
+    return '<tr class="' + (S.selected[c.id] ? "sel" : "") + '" data-id="' + esc(c.id) + '">' +
+      '<td class="pick"><input type="checkbox" data-pick="' + esc(c.id) + '"' + (S.selected[c.id] ? " checked" : "") + ' aria-label="Select ' + esc(c.first + " " + c.last) + '"></td>' +
+      '<td><div class="nm">' + esc(c.first + " " + c.last) + '</div><div class="sm">' + esc(c.title) + '</div></td>' +
+      '<td><div class="co">' + esc(c.company) + '</div><div class="sm mono">' + esc(c.domain) + '</div></td>' +
+      '<td class="sm">' + esc([c.city, c.country].filter(Boolean).join(", ")) + '</td>' +
+      '<td>' + mail + '</td>' +
+      '<td class="act"><button class="x" type="button" data-drop-row="' + esc(c.id) + '" aria-label="Remove ' + esc(c.first + " " + c.last) + '">×</button></td>' +
+    '</tr>';
+  }).join("");
+
+  var allOn = l.every(function(c){ return S.selected[c.id]; });
+  $("list-wrap").innerHTML =
+    '<table><thead><tr>' +
+    '<th class="pick"><input type="checkbox" id="pick-all"' + (allOn ? " checked" : "") + ' aria-label="Select all"></th>' +
+    '<th>Contact</th><th>Company</th><th>Location</th><th>Work email</th><th></th>' +
+    '</tr></thead><tbody>' + rows + '</tbody></table>';
+
+  // bulk bar
+  var needReveal = sel.filter(function(c){ return !c.email && c.emailState !== "failed" && c.revealCost != null; });
+  var cost = needReveal.reduce(function(a, c){ return a + (c.revealCost || 0); }, 0);
+  var bulk = "";
+  if (needReveal.length){
+    bulk += '<button class="btn" id="btn-reveal" type="button">Reveal ' + needReveal.length +
+            ' email' + (needReveal.length === 1 ? "" : "s") + ' · ' + cost + ' credit' + (cost === 1 ? "" : "s") + '</button>';
+  }
+  bulk += '<button class="btn ghost" id="btn-drop-sel" type="button">Remove selected</button>';
+  bulk += '<div style="flex:1"></div>';
+  bulk += '<span class="count" style="margin-right:4px">' + withMail + ' ready to mail</span>';
+  bulk += '<button class="btn primary" id="btn-to-mail" type="button"' + (withMail ? "" : " disabled") + '>Write the approach →</button>';
+  $("list-bulk").innerHTML = bulk;
+  bindList();
+}
+
+function bindList(){
+  var all = $("pick-all");
+  if (all) all.addEventListener("change", function(){
+    var on = this.checked;
+    live().forEach(function(c){ S.selected[c.id] = on; });
+    renderList();
+  });
+  $("list-wrap").addEventListener("change", function(e){
+    var cb = e.target.closest("[data-pick]");
+    if (!cb) return;
+    S.selected[cb.getAttribute("data-pick")] = cb.checked;
+    renderList();
+  });
+  $("list-wrap").addEventListener("click", function(e){
+    var b = e.target.closest("[data-drop-row]");
+    if (!b) return;
+    var id = b.getAttribute("data-drop-row");
+    S.removed[id] = true; delete S.selected[id];
+    renderList();
+  });
+  $("filter-chips").addEventListener("click", function(e){
+    var d = e.target.closest("[data-drop]");
+    if (d){
+      var key = d.getAttribute("data-drop"), val = d.getAttribute("data-val");
+      S.filters[key] = (S.filters[key] || []).filter(function(v){ return String(v) !== val; });
+      renderList();
+      return;
+    }
+    if (e.target.id === "chip-rerun") rerun();
+  });
+  var rev = $("btn-reveal");
+  if (rev) rev.addEventListener("click", revealSelected);
+  $("btn-drop-sel").addEventListener("click", function(){
+    chosen().forEach(function(c){ S.removed[c.id] = true; delete S.selected[c.id]; });
+    renderList();
+  });
+  var next = $("btn-to-mail");
+  if (next) next.addEventListener("click", function(){
+    reach(2); go(2);
+    if (!S.mail.body) draftEmail(false);
+  });
+}
+
+function rerun(){
+  var btn = $("chip-rerun");
+  btn.textContent = "Searching…";
+  runSearch(S.filters).then(function(){
+    renderList(); refreshMeter();
+  }).catch(function(e){
+    $("list-notices").innerHTML = noticeHTML("bad", "Search failed", "<p style='margin:0'>" + esc(explain(e, LUSHA)) + "</p>");
+    renderList();
+  });
+}
+
+function revealSelected(){
+  var btn = $("btn-reveal");
+  var need = chosen().filter(function(c){ return !c.email && c.emailState !== "failed" && c.revealCost != null; });
+  if (!need.length) return;
+  busy(btn, "Revealing…");
+
+  var batches = [];
+  for (var i = 0; i < need.length; i += 50) batches.push(need.slice(i, i + 50));
+
+  var chain = Promise.resolve();
+  batches.forEach(function(b){
+    chain = chain.then(function(){
+      return call(LUSHA, "prospecting_contact_enrich", {
+        ids: b.map(function(c){ return c.id; }),
+        reveal: ["emails"]
+      }).then(function(res){
+        var byId = {};
+        ((res && res.results) || []).forEach(function(r){ byId[r.id] = r; });
+        b.forEach(function(c){
+          var r = byId[c.id];
+          var mails = (r && r.emails) || [];
+          var work = mails.filter(function(m){ return m.type === "work"; })[0] || mails[0];
+          if (work && work.email){ c.email = work.email; c.emailState = "revealed"; }
+          else c.emailState = "failed";
+        });
+      });
+    });
+  });
+
+  chain.then(function(){
+    unbusy(btn);
+    // anything now matching a CRM exclusion by address drops out automatically
+    renderList(); refreshMeter();
+  }).catch(function(e){
+    unbusy(btn);
+    $("list-notices").innerHTML = noticeHTML("bad", "Couldn't reveal those emails",
+      "<p style='margin:0'>" + esc(explain(e, LUSHA)) + "</p>");
+    renderList();
+  });
+}
+
+/* ============================================================
+   Stage 3 — the message
+   ============================================================ */
+var TOKENS = ["firstName", "lastName", "jobTitle", "company", "city"];
+function renderMail(){
+  var s = sendable();
+  $("mail-count").innerHTML = '<b>' + s.length + '</b> recipient' + (s.length === 1 ? "" : "s") + ' · one personalised email each';
+  $("m-subject").value = S.mail.subject;
+  $("m-body").value = S.mail.body;
+  $("m-sig").value = S.mail.sig;
+  $("tok-row").innerHTML = TOKENS.map(function(t){
+    return '<button class="tok" type="button" data-tok="' + t + '">{{' + t + '}}</button>';
+  }).join("") + '<span class="sm" style="align-self:center;margin-left:4px">click to insert</span>';
+  $("tok-row").onclick = function(e){
+    var b = e.target.closest("[data-tok]");
+    if (!b) return;
+    var ta = $("m-body"), t = "{{" + b.getAttribute("data-tok") + "}}";
+    var st = ta.selectionStart, en = ta.selectionEnd;
+    ta.value = ta.value.slice(0, st) + t + ta.value.slice(en);
+    ta.focus(); ta.selectionStart = ta.selectionEnd = st + t.length;
+    S.mail.body = ta.value; renderPreview();
+  };
+  if (S.pvIndex >= s.length) S.pvIndex = 0;
+  renderPreview();
+}
+function merge(tpl, c){
+  return String(tpl || "")
+    .replace(/\{\{\s*firstName\s*\}\}/g, c.first || "there")
+    .replace(/\{\{\s*lastName\s*\}\}/g, c.last || "")
+    .replace(/\{\{\s*jobTitle\s*\}\}/g, c.title || "your role")
+    .replace(/\{\{\s*company\s*\}\}/g, c.company || "your business")
+    .replace(/\{\{\s*city\s*\}\}/g, c.city || "the UK");
+}
+function stepPreview(d){
+  var s = sendable();
+  if (!s.length) return;
+  S.pvIndex = (S.pvIndex + d + s.length) % s.length;
+  renderPreview();
+}
+function renderPreview(){
+  var s = sendable();
+  if (!s.length){
+    $("pv-who").textContent = "—";
+    $("pv-subj").textContent = "No recipients";
+    $("pv-text").textContent = "";
+    $("pv-foot").textContent = "";
+    return;
+  }
+  var c = s[Math.min(S.pvIndex, s.length - 1)];
+  $("pv-who").textContent = c.email;
+  $("pv-subj").textContent = merge(S.mail.subject, c) || "(no subject)";
+  $("pv-text").textContent = merge(S.mail.body, c);
+  $("pv-foot").textContent = merge(S.mail.sig, c);
+}
+
+function draftEmail(force){
+  if (!sampler){
+    $("mail-notices").innerHTML = noticeHTML("warn", "Claude isn't available here",
+      "<p style='margin:0'>Write the email yourself below — merge tokens still work.</p>");
+    return;
+  }
+  var btn = $("btn-redraft");
+  busy(btn, "Drafting…");
+  $("mail-notices").innerHTML = "";
+
+  var sample = sendable().slice(0, 6).map(function(c){
+    return "- " + c.title + " at " + c.company + (c.city ? " (" + c.city + ")" : "");
+  }).join("\n");
+
+  var prompt =
+    "Write one cold outreach email for a UK FX and trade finance broker. Reply with ONLY a JSON object " +
+    '{"subject": string, "body": string}.\n\n' +
+    "THE BRIEF THAT SOURCED THIS LIST:\n" + S.brief + "\n\n" +
+    "A SAMPLE OF WHO WILL RECEIVE IT:\n" + sample + "\n\n" +
+    "Rules:\n" +
+    "- British English. Plain, direct, the way a broker actually writes. No exclamation marks, no 'I hope this finds you well', no 'game-changer', no bullet-point pitch decks.\n" +
+    "- Under 130 words in the body. Short paragraphs.\n" +
+    "- Open by naming something true about their business or sector from the brief — not flattery.\n" +
+    "- Say concretely what a trade finance facility or FX hedging would do for a business like theirs (supplier payment terms, currency exposure on imports, cash tied up in stock).\n" +
+    "- Do NOT state rates, savings percentages, guarantees, or anything that reads as a promise of returns.\n" +
+    "- End with one low-friction ask — a short call, a question they can answer in a line.\n" +
+    "- Use these merge tokens where natural: {{firstName}}, {{company}}, {{jobTitle}}. Always open with {{firstName}}.\n" +
+    "- No signature, no sign-off name, no unsubscribe line — those are added separately.\n" +
+    "- Subject: under 50 characters, lower-key than a marketing headline, no colon-separated slogan.";
+
+  sampler.json(prompt, { modelTier:"default", cache: force ? false : true }).then(function(d){
+    if (d && typeof d.subject === "string") S.mail.subject = d.subject;
+    if (d && typeof d.body === "string") S.mail.body = d.body;
+    unbusy(btn); renderMail();
+  }).catch(function(err){
+    unbusy(btn);
+    var m = { not_granted:"You declined Claude for this page. Write the email yourself below.",
+              rate_limited:"Claude is rate-limited. Wait a minute, or write the email yourself.",
+              invalid_json:"The draft came back malformed. Try again.",
+              refused:"Claude declined to draft that. Try rewording the brief." };
+    $("mail-notices").innerHTML = noticeHTML("warn", "No draft this time",
+      "<p style='margin:0'>" + esc(m[err && err.code] || "Couldn't draft the email. Write it yourself below.") + "</p>");
+  });
+}
+
+/* ============================================================
+   Stage 4 — send
+   ============================================================ */
+function renderSend(){
+  var s = sendable();
+  $("send-count").innerHTML = '<b>' + s.length + '</b> to go out';
+
+  var warn = "";
+  if (s.length > 200){
+    warn += noticeHTML("warn", "That's a big single run",
+      "<p style='margin:0'>Gmail caps sending at roughly 500 a day on a personal account and 2,000 on Workspace, and a sudden spike is what trips spam filtering. Consider splitting this across a few days.</p>");
+  }
+  if (!/\{\{\s*firstName\s*\}\}/.test(S.mail.body)){
+    warn += noticeHTML("warn", "No first name in the body",
+      "<p style='margin:0'>Every recipient gets identical text, which reads as bulk mail. Add <code>{{firstName}}</code> on the message screen.</p>");
+  }
+  $("send-notices").innerHTML = warn;
+
+  if (S.sending) return;
+  $("send-confirm").innerHTML =
+    '<h3>Two ways to put these out</h3>' +
+    '<p><strong>Create drafts</strong> puts one personalised draft per recipient in your Gmail, sends nothing, and lets you read them before anything leaves. ' +
+    '<strong>Send now</strong> sends them individually — each person gets their own email and sees no one else\'s address.</p>' +
+    '<div class="confirm-row">' +
+      '<label class="sm" for="confirm-n">Type <b class="mono">' + s.length + '</b> to unlock sending</label>' +
+      '<input id="confirm-n" class="mono" type="text" inputmode="numeric" autocomplete="off" aria-label="Confirm recipient count">' +
+      '<button class="btn" id="btn-drafts" type="button"' + (s.length ? "" : " disabled") + '>Create ' + s.length + ' drafts</button>' +
+      '<button class="btn primary" id="btn-send" type="button" disabled>Send now</button>' +
+    '</div>';
+
+  $("confirm-n").addEventListener("input", function(){
+    $("btn-send").disabled = this.value.trim() !== String(s.length) || !s.length;
+  });
+  $("btn-drafts").addEventListener("click", function(){ run("draft"); });
+  $("btn-send").addEventListener("click", function(){ run("send"); });
+}
+
+function run(mode){
+  var s = sendable();
+  if (!s.length) return;
+  S.sending = true;
+  $("send-confirm").innerHTML = '<h3>' + (mode === "draft" ? "Creating drafts" : "Sending") + '</h3>' +
+    '<p style="margin:0">One request per recipient, paced so Gmail doesn\'t throttle you. Leave this page open until it finishes.</p>';
+  $("send-progress").hidden = false;
+  $("send-log").innerHTML = "";
+
+  var done = 0, ok = 0, failed = 0;
+  function tick(c, state, detail){
+    done++;
+    if (state === "ok") ok++; else failed++;
+    $("send-bar").style.width = Math.round(done / s.length * 100) + "%";
+    $("send-status").innerHTML = '<b>' + done + '</b> of ' + s.length + ' · ' + ok + ' ' +
+      (mode === "draft" ? "drafted" : "sent") + (failed ? ' · <span style="color:var(--crit)">' + failed + ' failed</span>' : "");
+    var row = document.createElement("div");
+    row.innerHTML = '<span class="pill ' + (state === "ok" ? "ok" : "err") + '">' +
+      (state === "ok" ? (mode === "draft" ? "draft" : "sent") : "failed") + '</span>' +
+      '<span class="addr mono">' + esc(c.email) + '</span>' +
+      '<span class="sm">' + esc(detail || c.company) + '</span>';
+    $("send-log").prepend(row);
+  }
+
+  var chain = Promise.resolve();
+  s.forEach(function(c, i){
+    chain = chain.then(function(){
+      var body = merge(S.mail.body, c) + "\n\n" + merge(S.mail.sig, c);
+      var input = { to:[c.email], subject: merge(S.mail.subject, c), body: body };
+      return call(GMAIL, mode === "draft" ? "create_draft" : "send_message", input)
+        .then(function(){ tick(c, "ok"); })
+        .catch(function(e){ tick(c, "err", explain(e, GMAIL)); });
+    }).then(function(){
+      if (i < s.length - 1) return new Promise(function(r){ setTimeout(r, 900); });
+    });
+  });
+
+  chain.then(function(){
+    S.sending = false;
+    var verb = mode === "draft" ? "drafted" : "sent";
+    $("send-confirm").innerHTML =
+      '<h3>' + ok + ' ' + verb + (failed ? ", " + failed + " failed" : "") + '</h3>' +
+      '<p>' + (mode === "draft"
+        ? "They're sitting in your Gmail drafts. Read a few, then come back and send, or send them from Gmail."
+        : "Each went out as its own email. Replies land in your inbox as normal threads.") + '</p>' +
+      '<div class="confirm-row"><button class="btn" id="btn-again" type="button">Back to the list</button></div>';
+    $("btn-again").addEventListener("click", function(){
+      $("send-progress").hidden = true; go(1);
+    });
+  });
+}
+
+boot();
+})();
+</script>
