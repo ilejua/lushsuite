@@ -1,0 +1,169 @@
+<title>Lushsuite Handover</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --elegant-blue:#74B0CA; --warm-black:#231F20; --dark-blue:#224862;
+  --digital-blue:#9FF6F3; --warm-white:#F7F4EE; --grey:#E0E0E0; --charcoal:#737373;
+  --ground:var(--warm-white); --surface:#FFFFFF;
+  --ink:var(--warm-black); --ink-2:var(--charcoal); --ink-3:#A3A3A3;
+  --rule:var(--grey); --rule-2:#EDE9E2;
+  --accent:var(--dark-blue); --accent-wash:#E4EFF4;
+  --good:#14532D; --good-wash:#E3EFE7;
+  --crit:#7A1717; --crit-wash:#F8E4E4;
+  --focus:var(--dark-blue);
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:var(--warm-black); --surface:#2B2627;
+    --ink:var(--warm-white); --ink-2:#C4BFB8; --ink-3:#8D8781;
+    --rule:#433C3E; --rule-2:#332D2F;
+    --accent:var(--digital-blue); --accent-wash:#1D3336;
+    --good:#8FD1A0; --good-wash:#1C2A20;
+    --crit:#E79A9A; --crit-wash:#33201F;
+    --focus:var(--elegant-blue);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:var(--warm-black); --surface:#2B2627;
+  --ink:var(--warm-white); --ink-2:#C4BFB8; --ink-3:#8D8781;
+  --rule:#433C3E; --rule-2:#332D2F;
+  --accent:var(--digital-blue); --accent-wash:#1D3336;
+  --good:#8FD1A0; --good-wash:#1C2A20;
+  --crit:#E79A9A; --crit-wash:#33201F;
+  --focus:var(--elegant-blue);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--ground); color:var(--ink);
+  font-family:Inter,ui-sans-serif,system-ui,-apple-system,Arial,sans-serif;
+  font-size:16px; line-height:1.62; -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:680px; margin:0 auto; padding-block:clamp(40px,7vh,72px); padding-left:20px; padding-right:20px}
+h1{
+  font-family:Apparat,"Kmr Apparat",Inter,Arial,sans-serif; font-weight:600;
+  font-size:clamp(28px,4.6vw,40px); line-height:1.12; letter-spacing:-.032em; margin:0;
+  text-wrap:balance;
+}
+.lede{color:var(--ink-2); margin:14px 0 0; font-size:17px; max-width:56ch}
+h2{
+  font-family:Apparat,"Kmr Apparat",Inter,Arial,sans-serif; font-weight:600;
+  font-size:21px; letter-spacing:-.02em; margin:44px 0 0; text-wrap:balance;
+}
+h3{font-size:15px; margin:26px 0 0; font-weight:600}
+p{margin:12px 0 0; max-width:64ch}
+.mono{font-family:"Roboto Mono",ui-monospace,Menlo,monospace}
+a{color:var(--accent)}
+hr{border:0; border-top:1px solid var(--rule); margin:40px 0 0}
+
+.need{
+  display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:1px;
+  background:var(--rule); border:1px solid var(--rule); border-radius:4px;
+  margin-top:20px; overflow:hidden;
+}
+.need div{background:var(--surface); padding:14px 16px}
+.need b{display:block; font-size:14px}
+.need span{display:block; font-size:13px; color:var(--ink-2); margin-top:3px}
+
+table{border-collapse:collapse; width:100%; margin-top:18px; font-size:14.5px}
+th,td{text-align:left; padding:11px 12px; border-bottom:1px solid var(--rule-2); vertical-align:top}
+th{font-size:11px; letter-spacing:.09em; text-transform:uppercase; color:var(--ink-3); border-bottom:1px solid var(--rule)}
+td:first-child{white-space:nowrap; font-weight:600}
+.yes{color:var(--good)} .no{color:var(--crit)}
+
+ol{margin:14px 0 0; padding-left:20px} ol li{margin-top:9px; max-width:62ch}
+ul{margin:10px 0 0; padding-left:20px} ul li{margin-top:6px; max-width:62ch}
+
+pre{
+  background:var(--surface); border:1px solid var(--rule); border-left:3px solid var(--elegant-blue);
+  border-radius:3px; padding:14px 16px; overflow-x:auto; margin:14px 0 0;
+  font-family:"Roboto Mono",monospace; font-size:12.5px; line-height:1.6; color:var(--ink-2);
+}
+.note{
+  border:1px solid var(--rule); border-left:3px solid var(--elegant-blue);
+  background:var(--surface); border-radius:3px; padding:15px 17px; margin-top:20px;
+}
+.note.stop{border-left-color:var(--crit)}
+.note b{display:block; margin-bottom:5px}
+.note p{margin:0; font-size:14.5px; color:var(--ink-2)}
+.step-no{
+  font-family:"Roboto Mono",monospace; font-size:11px; letter-spacing:.09em;
+  text-transform:uppercase; color:var(--accent); background:var(--accent-wash);
+  border-radius:2px; padding:3px 8px; display:inline-block; margin-bottom:10px;
+}
+footer{margin-top:48px; padding-top:20px; border-top:1px solid var(--rule); font-size:13px; color:var(--ink-3)}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<div class="wrap">
+  <h1>Setting up Lushsuite on your own account</h1>
+  <p class="lede">Lushsuite turns a plain-English brief into a list of UK or UAE finance decision-makers, reveals their work emails, drafts the approach and sends one personalised email each. This page is how you get your own copy running.</p>
+
+  <h2>What you need first</h2>
+  <div class="need">
+    <div><b>Claude Pro, Max, Team or Enterprise</b><span>Artifacts aren't available on the free plan</span></div>
+    <div><b>A Lusha seat</b><span>Searches spend your own credits</span></div>
+    <div><b>Gmail</b><span>Approaches send from your mailbox</span></div>
+    <div><b>Claude Code or the Claude desktop app</b><span>Signed in to your Claude account</span></div>
+  </div>
+
+  <div class="note">
+    <b>Everything runs on your account, not the sender's</b>
+    <p>Lushsuite calls Lusha and Gmail as <em>you</em>. Your credits get spent, your mailbox sends, replies come back to your inbox. Nobody can send mail as you from a link, and you can't use someone else's Lusha seat.</p>
+  </div>
+
+  <h2>Can I just open a link someone sent me?</h2>
+  <p>Only if your organisation is on a Team or Enterprise plan. A page that calls connectors can never be opened from a public link, on any plan — so on Pro and Max there is no link to send, and each person publishes their own copy instead.</p>
+
+  <table>
+    <thead><tr><th>Their plan</th><th>Can they send you a working link?</th></tr></thead>
+    <tbody>
+      <tr><td>Team / Enterprise</td><td><span class="yes">Yes</span> — shared inside the organisation, with named people or everyone in it. An Owner also needs <span class="mono">Enable artifact connectors</span> switched on.</td></tr>
+      <tr><td>Pro / Max</td><td><span class="no">No</span> — the page stays private to whoever built it. Use the steps below.</td></tr>
+    </tbody>
+  </table>
+
+  <hr>
+
+  <h2>Publishing your own copy</h2>
+  <p>Takes about five minutes. You get a private page on your own connectors and your own credits.</p>
+
+  <h3><span class="step-no">Step 1</span><br>Get the file</h3>
+  <p>Ask for <span class="mono">index.html</span> from the Lushsuite repository, or have it sent to you directly. Save it in a folder on its own.</p>
+
+  <h3><span class="step-no">Step 2</span><br>Connect Lusha and Gmail</h3>
+  <p>On claude.ai, go to <b>Settings → Connectors</b> and add both <b>Lusha</b> and <b>Gmail</b>. The page looks for them under exactly those names — if yours are named differently, rename them to match.</p>
+
+  <h3><span class="step-no">Step 3</span><br>Publish it</h3>
+  <p>Open the folder in Claude Code or the Claude desktop app, signed in to your Claude account, and paste this:</p>
+  <pre>Publish index.html as an artifact. It calls my Lusha and Gmail
+connectors — declare Lusha with prospecting_contact_search,
+prospecting_contact_enrich, prospecting_contact_filters,
+prospecting_company_filters and account_usage, and Gmail with
+create_draft and send_message. Also declare sample.</pre>
+  <p>Claude publishes the page and gives you a URL. Open it, allow Lusha and Gmail when asked, and the credit counter in the top right should fill in. That's it working.</p>
+
+  <div class="note stop">
+    <b>Don't paste the file into a normal Claude chat</b>
+    <p>An artifact made inside a conversation runs a different, simpler version of the connector interface — none of the calls this page makes exist there, so it will load and then do nothing. It has to be published from Claude Code or the desktop app.</p>
+  </div>
+
+  <h2>Before you send anything</h2>
+  <ul>
+    <li><b>Send from the address you want replies on.</b> A personal Gmail is poor for deliverability and wrong for client contact; connect your work account.</li>
+    <li><b>Create drafts first.</b> The page's default button writes one draft per recipient into your Gmail so you can read a few before anything leaves. "Send now" is deliberately gated behind typing the recipient count.</li>
+    <li><b>Cold outreach for FX and trade finance is a financial promotion.</b> It needs the same internal sign-off as anything else you'd send a prospect. The tool won't get that for you.</li>
+    <li><b>Fill in the signature field.</b> It carries your name and the opt-out line, and it's appended to every message. Under UK GDPR you have to identify yourself and honour objections.</li>
+    <li><b>Gmail caps sending</b> at roughly 500 a day on a personal account and 2,000 on Workspace. A sudden spike from a cold domain is what trips spam filtering — build up gradually.</li>
+  </ul>
+
+  <h2>One thing your copy won't know</h2>
+  <p>Lushsuite remembers everyone it has shown you and everyone you've emailed, so the same person never comes back twice. That memory lives in your browser, on your copy alone.</p>
+  <p>If two of you work the same sector, neither copy knows what the other has sent, and you can both approach the same CFO. Agree who covers what, or ask for the shared version — that needs a proper backend rather than a page, and it's worth building once four or more people are using this.</p>
+
+  <footer>Lushsuite — Lusha prospecting and Gmail outreach for an FX and trade finance desk.</footer>
+</div>
