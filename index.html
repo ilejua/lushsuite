@@ -84,16 +84,7 @@ button,input,textarea,select{font:inherit;color:inherit}
   max-width:1180px; margin:0 auto; padding:10px 20px;
   display:flex; align-items:center; gap:20px; flex-wrap:wrap;
 }
-.wordmark{
-  font-family:Apparat,"Kmr Apparat",Inter,Arial,sans-serif;
-  font-size:21px; font-weight:400; letter-spacing:-.022em; white-space:nowrap;
-  display:flex; align-items:center; gap:10px;
-}
-.wordmark em{font-style:normal;color:var(--ink-3);font-size:14px;letter-spacing:0}
-.wordmark .mark{
-  width:9px;height:9px;border-radius:50%;background:var(--elegant-blue);flex:none;
-}
-.steps{display:flex; gap:4px; flex-wrap:wrap; flex:1 1 320px; min-width:0}
+.steps{display:flex; gap:4px; flex-wrap:wrap; flex:1 1 auto; min-width:0}
 .step{
   display:flex; align-items:baseline; gap:7px; padding:5px 11px 5px 9px;
   border-radius:999px; border:1px solid transparent; color:var(--ink-3);
@@ -124,10 +115,6 @@ main{max-width:1180px; margin:0 auto; padding:0 20px 88px}
 }
 @keyframes drift{from{transform:translate3d(-3%,0,0) scale(1)}to{transform:translate3d(3%,2%,0) scale(1.08)}}
 .brief-in{max-width:720px;margin:0 auto}
-.eyebrow{
-  font-family:"IBM Plex Mono",monospace; font-size:11px; letter-spacing:.14em;
-  text-transform:uppercase; color:var(--ink-3); margin-bottom:14px;
-}
 .brief h1{
   font-family:Apparat,"Kmr Apparat",Inter,Arial,sans-serif; font-weight:400;
   font-size:clamp(33px,5.2vw,53px); line-height:1.08; letter-spacing:-.035em;
@@ -333,12 +320,11 @@ dialog::backdrop{background:rgba(10,12,14,.55)}
 
 <header class="rail">
   <div class="rail-in">
-    <!-- LOGO SLOT — for the internally hosted copy, replace the dot below with the
-         ebury wordmark SVG, e.g. <img src="ebury.svg" alt="Ebury" height="18">.
+    <!-- LOGO SLOT — for the internally hosted copy, put the ebury wordmark here,
+         e.g. <img src="ebury.svg" alt="Ebury" height="18">.
          Left out of the published artifact on purpose: that URL is shareable, and a
          page carrying the mark and sending client approaches reads as an official
          Ebury system to anyone the link reaches. -->
-    <div class="wordmark"><span class="mark" aria-hidden="true"></span>lushsuite <em>origination</em></div>
     <nav class="steps" id="steps"></nav>
     <div class="meter" id="meter"><span>Lusha</span> <b class="mono">—</b> <span>credits</span></div>
   </div>
@@ -348,7 +334,6 @@ dialog::backdrop{background:rgba(10,12,14,.55)}
   <!-- ======================= 1. BRIEF ======================= -->
   <section class="view brief" id="v-brief">
     <div class="brief-in">
-      <div class="eyebrow">Origination — Trade Finance &amp; FX</div>
       <h1>Describe the book you want to <em>build</em>.</h1>
       <p class="sub">Write it the way you'd brief a junior: sector, geography, who signs off. The desk resolves it into a Lusha search, reveals verified work emails, and drafts the approach.</p>
 
