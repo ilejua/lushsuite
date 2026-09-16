@@ -26,6 +26,28 @@ Published at: https://claude.ai/artifact/TxU8km8LcENoXXxpgk1zgK
 | **4. Message** | `sample.json` drafts subject + body with `{{firstName}}`-style merge tokens; live per-recipient preview | Claude usage |
 | **5. Send** | `create_draft` or `send_message`, one call per recipient, 900 ms apart | — |
 
+## Find me an angle
+
+A blank box is the hardest part of a prospecting tool, so the brief screen has a
+button that proposes three sectors to work — and then counts each one against Lusha
+so the numbers on screen are real rather than plausible-sounding.
+
+The prompt carries the market, the live sub-industry taxonomy, and what this desk
+actually sells: facilities that pay overseas suppliers before goods are sold, and
+hedging for businesses with currency exposure. It asks where working capital gets
+stuck — shipping lead times, seasonal buying, raw materials priced in dollars,
+components from Asia or Europe — and steers differently per market: importers and
+distributors in the UK, re-export and general trading around Jebel Ali in the UAE.
+
+Each angle then gets a real `prospecting_contact_search` at `page_size: 10`, one
+credit, and the returned `pagination.total` is what shows on the card. Picking one
+fills the brief box and runs the full search.
+
+Sectors already searched are recorded per market in `ledger.worked` and passed to the
+prompt, so repeat presses steer towards ground the desk has not covered. Counts are
+the raw Lusha total, before the client-side title grouping trims them — the header
+says so rather than quietly overstating.
+
 ## Search criteria
 
 Two markets, switched by the flag tabs in the header: **United Kingdom** and
