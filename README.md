@@ -41,7 +41,13 @@ Published at: https://claude.ai/artifact/4DNTKaTTxxrG2BV51k9kKx
 
 An `@` that is part of an email address is never treated as a field. Example rows load
 first so the page shows what it does; they use `example.com` and cannot be sent to.
-Subject, body, signature and fallbacks are saved in the browser. Declares Gmail
+The signature is rich text: paste it straight from a Gmail compose window and the logo,
+bold and links come with it. Pasted HTML is sanitised (no scripts, handlers or
+`javascript:` links). Emails go out with an `htmlBody` in Gmail's default font plus a
+plain-text alternative. An image only reaches recipients if it is on a public `https`
+link, as Gmail signature images are; a pasted image file is flagged and left out of the
+email. Subject, body, signature and fallbacks are saved in the browser, so the logo is
+never part of the published page. Declares Gmail
 `create_draft` and `send_message` only.
 
 ## Find me an angle

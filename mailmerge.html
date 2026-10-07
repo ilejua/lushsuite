@@ -170,7 +170,21 @@ td.st{width:1%}
   padding:11px 13px;font-size:14.5px;line-height:1.6;resize:vertical;
 }
 #f-body{min-height:260px}
-#f-sig{min-height:110px}
+/* The signature is rich text so a pasted Gmail signature keeps its logo, bold and links.
+   It sits on white in both themes because that's what recipients will see. */
+.sig-box{
+  min-height:130px;max-height:420px;overflow:auto;border:1px solid var(--rule);border-radius:10px;
+  padding:12px 14px;background:#FFFFFF;color:#222222;
+  font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.45;overflow-wrap:anywhere;
+}
+.sig-box:focus{outline:2px solid var(--focus);outline-offset:1px}
+.sig-box:empty::before{content:attr(data-placeholder);color:#999999}
+.sig-box img{max-width:100%;height:auto}
+.sig-box a{color:#1155CC}
+.sig-tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px}
+.sig-tools .btn{padding:6px 12px;font-size:13px}
+.img-link{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.img-link input{flex:1 1 220px}
 .lbl-row{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
 .hint{font-size:12px;color:var(--ink-3)}
 .fields-box{margin-bottom:16px}
@@ -198,16 +212,18 @@ details.fb summary{cursor:pointer;font-size:12.5px;color:var(--ink-2)}
 .pv-nav{display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap}
 .pv-nav .who{flex:1;min-width:0;font-size:13px;color:var(--ink-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pv-nav button{width:32px;height:32px;padding:0;justify-content:center}
-.mail{background:var(--raised);border:1px solid var(--rule);border-radius:14px;overflow:hidden;box-shadow:0 18px 40px -32px var(--shadow)}
-.mail-h{padding:12px 16px;border-bottom:1px solid var(--rule-2);font-size:13px;display:grid;grid-template-columns:auto 1fr;gap:3px 12px}
-.mail-h span{color:var(--ink-3)}
+/* The preview is the email as a recipient sees it: white, Gmail's default font, in either theme. */
+.mail{background:#FFFFFF;color:#222222;border:1px solid var(--rule);border-radius:14px;overflow:hidden;box-shadow:0 18px 40px -32px var(--shadow)}
+.mail-h{padding:12px 16px;border-bottom:1px solid #ECECEC;font-size:13px;display:grid;grid-template-columns:auto 1fr;gap:3px 12px}
+.mail-h span{color:#777777}
 .mail-h div{min-width:0;overflow-wrap:anywhere}
-.mail-subj{font-weight:600;color:var(--ink)}
-.mail-b{padding:16px 18px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:14.5px;line-height:1.62}
-.mail-b .sig{display:block;margin-top:14px;color:var(--ink-2)}
-mark.v{background:var(--token-wash);color:inherit;border-radius:3px;padding:0 2px}
-mark.fbv{background:var(--warn-wash);color:var(--warn);border-radius:3px;padding:0 2px}
-mark.miss{background:var(--crit-wash);color:var(--crit);border-radius:3px;padding:0 2px}
+.mail-subj{font-weight:600}
+.mail-b{padding:16px 18px;white-space:pre-wrap;overflow-wrap:anywhere;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.5}
+.mail-b .sig{display:block;margin-top:13px}
+.mail mark{color:inherit;border-radius:3px;padding:0 2px}
+.mail mark.v{background:#DDEEF5}
+.mail mark.fbv{background:#F6EFDC;color:#6B4E0A}
+.mail mark.miss{background:#F8E4E4;color:#7A1717}
 .checks{margin-top:14px}
 
 /* ---------- stage 3 : send ---------- */
@@ -324,9 +340,23 @@ mark.miss{background:var(--crit-wash);color:var(--crit);border-radius:3px;paddin
           <div class="suggest" id="sg-body" hidden></div>
         </div>
         <div class="field" style="margin-bottom:0">
-          <div class="lbl-row"><label for="f-sig">Signature</label><span class="hint">Added under every email · saved in this browser</span></div>
-          <textarea id="f-sig" spellcheck="true"></textarea>
-          <div class="suggest" id="sg-sig" hidden></div>
+          <div class="lbl-row"><label id="sig-lbl">Signature</label><span class="hint">Added under every email · saved in this browser</span></div>
+          <div class="sig-box" id="f-sig" contenteditable="true" role="textbox" aria-multiline="true" aria-labelledby="sig-lbl" spellcheck="true"
+               data-placeholder="Paste your Gmail signature here"></div>
+          <div class="sig-tools">
+            <button class="btn" id="sig-howto-btn" type="button" aria-expanded="false">Copy it from Gmail</button>
+            <button class="btn" id="sig-img-btn" type="button">Add image from a link</button>
+            <button class="btn" id="sig-clear" type="button">Clear</button>
+          </div>
+          <div class="img-link" id="sig-img" hidden>
+            <input type="text" id="sig-img-url" placeholder="https://… link to a .png or .jpg" autocomplete="off" aria-label="Image link">
+            <button class="btn primary" id="sig-img-go" type="button">Insert</button>
+          </div>
+          <div class="notice info" id="sig-howto" hidden style="margin-top:10px">
+            <strong>Bring your signature across, logo and all</strong>
+            <p>In Gmail, click <b>Compose</b>. Your signature appears in the new message. Drag across the whole signature from the <b>--</b> line down to the last link, press Ctrl+C (⌘C on a Mac), click in the box above and press Ctrl+V. Close the Gmail draft without sending.</p>
+          </div>
+          <div id="sig-checks" style="margin-top:10px"></div>
         </div>
       </div>
 
@@ -629,6 +659,90 @@ function merge(tpl, row, html){
   }).join("");
 }
 
+/* ---- the signature is HTML ---- */
+
+/* Pasted HTML is cut down to what an email signature uses. Scripts, event
+   handlers and javascript: links never survive. */
+var KEEP = { A:1,B:1,STRONG:1,I:1,EM:1,U:1,BR:1,P:1,DIV:1,SPAN:1,IMG:1,FONT:1,SMALL:1,
+  TABLE:1,TBODY:1,THEAD:1,TR:1,TD:1,TH:1,UL:1,OL:1,LI:1,HR:1,CENTER:1 };
+var DROP = { SCRIPT:1,STYLE:1,IFRAME:1,OBJECT:1,EMBED:1,META:1,LINK:1,TITLE:1,HEAD:1,FORM:1,INPUT:1,BUTTON:1,SELECT:1,TEXTAREA:1,SVG:1,MATH:1 };
+var ATTRS = { href:1,src:1,alt:1,title:1,width:1,height:1,style:1,color:1,size:1,face:1,align:1,valign:1,
+  border:1,cellpadding:1,cellspacing:1,colspan:1,rowspan:1,bgcolor:1 };
+function safeUrl(u, img){
+  u = String(u || "").trim();
+  if (/^https?:\/\//i.test(u)) return u;
+  if (!img && /^(mailto|tel):/i.test(u)) return u;
+  if (img && /^(data|cid|blob):/i.test(u)) return u;   /* kept so the warning can name it */
+  return "";
+}
+function sanitize(html){
+  var doc = new DOMParser().parseFromString("<body>" + String(html || "") + "</body>", "text/html");
+  (function walk(node){
+    Array.prototype.slice.call(node.childNodes).forEach(function(n){
+      if (n.nodeType === 8){ n.remove(); return; }
+      if (n.nodeType !== 1) return;
+      var tag = n.tagName.toUpperCase();
+      if (DROP[tag]){ n.remove(); return; }
+      walk(n);
+      if (!KEEP[tag]){
+        /* unknown wrapper: keep its contents, lose the tag */
+        while (n.firstChild) n.parentNode.insertBefore(n.firstChild, n);
+        n.remove();
+        return;
+      }
+      Array.prototype.slice.call(n.attributes).forEach(function(a){
+        var name = a.name.toLowerCase();
+        if (!ATTRS[name]) { n.removeAttribute(a.name); return; }
+        if (name === "href" || name === "src"){
+          var v = safeUrl(a.value, name === "src");
+          if (v) n.setAttribute(name, v); else n.removeAttribute(a.name);
+        }
+        if (name === "style" && /expression|url\s*\(|javascript:/i.test(a.value)) n.removeAttribute(a.name);
+      });
+      if (tag === "A" && n.getAttribute("href")) n.setAttribute("target", "_blank");
+      if (tag === "IMG" && !n.getAttribute("src")) n.remove();
+    });
+  })(doc.body);
+  return doc.body.innerHTML.trim();
+}
+function plainToHtml(t){
+  return esc(t).replace(/\n/g, "<br>");
+}
+/* Fill @Fields in HTML. Only text between tags is touched, never attributes. */
+function mergeHtml(html, row, highlight){
+  return String(html || "").split(/(<[^>]*>)/).map(function(seg){
+    if (seg.charAt(0) === "<") return seg;
+    var txt = new DOMParser().parseFromString("<body>" + seg + "</body>", "text/html").body.textContent;
+    if (!tokensIn(txt).length) return seg;
+    return highlight ? merge(txt, row, true) : esc(merge(txt, row, false));
+  }).join("");
+}
+function htmlToText(html){
+  var d = new DOMParser().parseFromString("<body>" + String(html || "")
+    .replace(/<br\s*\/?>/gi, "\n").replace(/<\/(p|div|tr|li|h\d)>/gi, "\n$&") + "</body>", "text/html");
+  d.querySelectorAll("img").forEach(function(i){ i.replaceWith(i.getAttribute("alt") || ""); });
+  d.querySelectorAll("a[href]").forEach(function(a){
+    var h = a.getAttribute("href"), t = a.textContent.trim();
+    if (/^https?:/i.test(h) && t && t !== h && h.indexOf(t) < 0) a.textContent = t + " (" + h + ")";
+  });
+  return d.body.textContent.replace(/[ \t ]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
+}
+function sigText(){ return htmlToText(S.sig); }
+function sigImages(){
+  var d = new DOMParser().parseFromString("<body>" + S.sig + "</body>", "text/html");
+  return Array.prototype.map.call(d.querySelectorAll("img"), function(i){ return i.getAttribute("src") || ""; });
+}
+/* Gmail's own default look, so the merged email reads like one typed in Gmail. */
+var MAIL_FONT = 'font-family:Arial,Helvetica,sans-serif;font-size:small;color:#222222';
+function buildHtml(row){
+  var body = plainToHtml(merge(S.body, row, false));
+  /* Images that aren't on a public link would arrive as a broken icon, so they're left out. */
+  var d = new DOMParser().parseFromString("<body>" + sanitize(S.sig) + "</body>", "text/html");
+  d.querySelectorAll("img").forEach(function(i){ if (!/^https:\/\//i.test(i.getAttribute("src") || "")) i.remove(); });
+  var sig = S.sig.trim() ? '<br><br><div class="gmail_signature">' + mergeHtml(d.body.innerHTML, row, false) + '</div>' : "";
+  return '<div style="' + MAIL_FONT + '">' + body + sig + '</div>';
+}
+
 function tokensIn(tpl){
   var out = [];
   String(tpl || "").replace(TOKEN_RE, function(all, pre, name){ out.push(name); return all; });
@@ -637,7 +751,7 @@ function tokensIn(tpl){
 /* @Words that aren't columns: almost always a typo in a field name. */
 function unknownTokens(){
   var m = fieldMap(), bad = {};
-  [S.subject, S.body, S.sig].forEach(function(t){
+  [S.subject, S.body, sigText()].forEach(function(t){
     tokensIn(t).forEach(function(n){ if (!m[n.toLowerCase()]) bad[n] = 1; });
   });
   return Object.keys(bad);
@@ -645,7 +759,7 @@ function unknownTokens(){
 /* Fields used in the email that are blank for some recipients with no fallback. */
 function blanks(){
   var m = fieldMap(), used = {}, out = [];
-  [S.subject, S.body, S.sig].forEach(function(t){
+  [S.subject, S.body, sigText()].forEach(function(t){
     tokensIn(t).forEach(function(n){ var f = m[n.toLowerCase()]; if (f) used[f.key] = f; });
   });
   Object.keys(used).forEach(function(k){
@@ -757,8 +871,23 @@ function renderWrite(){
   }).join("");
   if ($("f-subj").value !== S.subject) $("f-subj").value = S.subject;
   if ($("f-body").value !== S.body) $("f-body").value = S.body;
-  if ($("f-sig").value !== S.sig) $("f-sig").value = S.sig;
+  if (document.activeElement !== $("f-sig") && $("f-sig").innerHTML !== S.sig) $("f-sig").innerHTML = S.sig;
+  renderSigChecks();
   renderPreview();
+}
+
+/* An image only reaches recipients if it's on a public https link. */
+function renderSigChecks(){
+  var srcs = sigImages(), out = "";
+  var local = srcs.filter(function(s){ return !/^https:\/\//i.test(s); });
+  if (local.length){
+    out += notice("bad", local.length === 1 ? "This image won't show for recipients" : local.length + " images won't show for recipients",
+      "It was pasted as a file rather than a link, and Gmail strips those. Copy the signature from a Gmail compose window instead (see <b>Copy it from Gmail</b>), or use <b>Add image from a link</b>.");
+  } else if (srcs.length){
+    out += notice("good", srcs.length === 1 ? "Logo is linked" : srcs.length + " images are linked",
+      "It loads from a public link, the same way your normal Gmail signature does.");
+  }
+  $("sig-checks").innerHTML = out;
 }
 
 function renderPreview(){
@@ -770,7 +899,8 @@ function renderPreview(){
   $("pv-next").disabled = S.pv >= list.length - 1;
   $("pv-to").textContent = r ? r.email : "—";
   $("pv-subj").innerHTML = merge(S.subject, r, true) || '<span style="color:var(--ink-3)">(no subject)</span>';
-  $("pv-body").innerHTML = merge(S.body, r, true) + (S.sig ? '<span class="sig">' + merge(S.sig, r, true) + '</span>' : "");
+  $("pv-body").innerHTML = merge(S.body, r, true) +
+    (S.sig.trim() ? '<div class="sig sig-box" style="border:0;padding:0;max-height:none;min-height:0;white-space:normal">' + mergeHtml(sanitize(S.sig), r, true) + '</div>' : "");
 
   var out = "";
   var unk = unknownTokens();
@@ -796,8 +926,20 @@ function firstKey(){
 }
 
 /* Insert @Field at the caret of whichever box was last focused. */
+var sigRange = null;
 function insertToken(key){
   var el = lastFocus || $("f-body");
+  if (el.id === "f-sig"){
+    el.focus();
+    var sel = window.getSelection();
+    if (sigRange){ sel.removeAllRanges(); sel.addRange(sigRange); }
+    else { var rg = document.createRange(); rg.selectNodeContents(el); rg.collapse(false); sel.removeAllRanges(); sel.addRange(rg); }
+    if (!document.execCommand("insertText", false, "@" + key)){
+      var r = sel.getRangeAt(0); r.deleteContents(); r.insertNode(document.createTextNode("@" + key)); r.collapse(false);
+    }
+    onEdit(el);
+    return;
+  }
   var v = el.value, s = el.selectionStart == null ? v.length : el.selectionStart, e = el.selectionEnd == null ? s : el.selectionEnd;
   var before = v.slice(0, s);
   /* Replace a half-typed @fra if the caret is sitting on one. */
@@ -813,9 +955,9 @@ function insertToken(key){
 
 /* @-autocomplete under each box. */
 var sgState = { el: null, items: [], sel: 0 };
-function sgBox(el){ return $(el.id === "f-subj" ? "sg-subj" : el.id === "f-body" ? "sg-body" : "sg-sig"); }
+function sgBox(el){ return $(el.id === "f-subj" ? "sg-subj" : "sg-body"); }
 function updateSuggest(el){
-  ["sg-subj","sg-body","sg-sig"].forEach(function(id){ if (!el || sgBox(el).id !== id) $(id).hidden = true; });
+  ["sg-subj","sg-body"].forEach(function(id){ if (!el || sgBox(el).id !== id) $(id).hidden = true; });
   if (!el) return;
   var before = el.value.slice(0, el.selectionStart || 0);
   var m = before.match(/(^|[^A-Za-z0-9_.@+-])@([A-Za-z0-9_]*)$/);
@@ -837,8 +979,13 @@ function updateSuggest(el){
 function onEdit(el){
   if (el.id === "f-subj"){ S.subject = el.value; store("subject", S.subject); }
   if (el.id === "f-body"){ S.body = el.value; store("body", S.body); }
-  if (el.id === "f-sig"){ S.sig = el.value; store("sig", S.sig); }
-  updateSuggest(el);
+  if (el.id === "f-sig"){
+    S.sig = el.textContent.trim() || el.querySelector("img") ? el.innerHTML : "";
+    store("sigHtml", S.sig);
+    renderSigChecks();
+  } else {
+    updateSuggest(el);
+  }
   renderPreview();
 }
 
@@ -953,7 +1100,8 @@ function start(mode){
     var input = {
       to: [r.email],
       subject: merge(S.subject, r, false),
-      body: merge(S.body, r, false) + (S.sig.trim() ? "\n\n" + merge(S.sig, r, false) : "")
+      body: merge(S.body, r, false) + (S.sig.trim() ? "\n\n" + merge(sigText(), r, false) : ""),
+      htmlBody: buildHtml(r)
     };
     S.mcp.callTool(GMAIL, tool, input).then(function(){
       r.done = mode; ok++; done++; logRow(r, true); status();
@@ -1082,7 +1230,48 @@ function bind(){
   $("to-write").addEventListener("click", function(){ go(1); });
 
   /* stage 2 */
-  ["f-subj","f-body","f-sig"].forEach(function(id){
+  var sig = $("f-sig");
+  sig.addEventListener("focus", function(){ lastFocus = sig; });
+  sig.addEventListener("input", function(){ onEdit(sig); });
+  document.addEventListener("selectionchange", function(){
+    var s = window.getSelection();
+    if (s.rangeCount && sig.contains(s.anchorNode)) sigRange = s.getRangeAt(0).cloneRange();
+  });
+  /* Pasting keeps the formatting and logo, minus anything unsafe. */
+  sig.addEventListener("paste", function(e){
+    var cd = e.clipboardData; if (!cd) return;
+    var html = cd.getData("text/html"), txt = cd.getData("text/plain");
+    e.preventDefault();
+    var clean = html ? sanitize(html) : plainToHtml(txt);
+    if (!document.execCommand("insertHTML", false, clean)){
+      var s = window.getSelection();
+      if (s.rangeCount){ var r = s.getRangeAt(0); r.deleteContents(); r.insertNode(r.createContextualFragment(clean)); }
+      else sig.innerHTML += clean;
+    }
+    onEdit(sig);
+  });
+  sig.addEventListener("blur", function(){
+    var clean = sanitize(sig.innerHTML);
+    if (clean !== sig.innerHTML) sig.innerHTML = clean;
+    onEdit(sig);
+  });
+  $("sig-howto-btn").addEventListener("click", function(){
+    var h = $("sig-howto"); h.hidden = !h.hidden; this.setAttribute("aria-expanded", String(!h.hidden));
+  });
+  $("sig-img-btn").addEventListener("click", function(){ $("sig-img").hidden = false; $("sig-img-url").focus(); });
+  $("sig-img-go").addEventListener("click", function(){
+    var u = $("sig-img-url").value.trim();
+    if (!/^https:\/\/\S+$/i.test(u)){
+      $("sig-checks").innerHTML = notice("bad", "That isn't an image link", "It needs to start with https://. Right-click an image on a website and choose <b>Copy image address</b>.");
+      return;
+    }
+    sig.innerHTML = sanitize(sig.innerHTML + '<br><img src="' + esc(u) + '" alt="" width="130">');
+    $("sig-img").hidden = true; $("sig-img-url").value = "";
+    onEdit(sig);
+  });
+  $("sig-clear").addEventListener("click", function(){ sig.innerHTML = ""; sigRange = null; onEdit(sig); sig.focus(); });
+
+  ["f-subj","f-body"].forEach(function(id){
     var el = $(id);
     el.addEventListener("focus", function(){ lastFocus = el; });
     el.addEventListener("input", function(){ onEdit(el); });
@@ -1097,7 +1286,7 @@ function bind(){
       else if (e.key === "Escape"){ box.hidden = true; sgState.el = null; }
     });
   });
-  ["sg-subj","sg-body","sg-sig"].forEach(function(id){
+  ["sg-subj","sg-body"].forEach(function(id){
     $(id).addEventListener("mousedown", function(e){
       var c = e.target.closest(".chip");
       if (c){ e.preventDefault(); insertToken(c.dataset.key); }
@@ -1129,7 +1318,9 @@ function bind(){
 function boot(){
   S.subject = recall("subject") || DEFAULTS.subject;
   S.body = recall("body") || DEFAULTS.body;
-  S.sig = recall("sig") || DEFAULTS.sig;
+  /* Older versions kept a plain-text signature; carry it over as HTML. */
+  var sh = recall("sigHtml"), sp = recall("sig");
+  S.sig = sh != null ? sanitize(sh) : plainToHtml(sp || DEFAULTS.sig);
   try { S.fallbacks = JSON.parse(recall("fallbacks") || "{}") || {}; } catch(e){ S.fallbacks = {}; }
   if (!S.fallbacks.FirstName && !recall("fallbacks")) S.fallbacks.FirstName = "there";
 
