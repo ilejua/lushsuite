@@ -732,6 +732,39 @@ function sigImages(){
   var d = new DOMParser().parseFromString("<body>" + S.sig + "</body>", "text/html");
   return Array.prototype.map.call(d.querySelectorAll("img"), function(i){ return i.getAttribute("src") || ""; });
 }
+/* claude.ai won't let a page load images from other sites, so inside this page a linked
+   logo is shown as a labelled tile. The real link is kept on data-src and restored before
+   anything is saved or sent; the email itself loads the logo as normal. */
+function tileFor(img){
+  var w = parseInt(img.getAttribute("width"), 10) || 130;
+  var h = parseInt(img.getAttribute("height"), 10) || Math.max(34, Math.round(w * 0.32));
+  var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + w + '" height="' + h + '">' +
+    '<rect x=".5" y=".5" width="' + (w - 1) + '" height="' + (h - 1) + '" rx="4" fill="#EEF5F8" stroke="#74B0CA" stroke-dasharray="4 3"/>' +
+    '<text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="Arial" font-size="' + Math.min(12, Math.max(9, Math.round(w / 13))) + '" fill="#224862">' +
+    (w >= 110 ? "Logo · shows in email" : "Logo") + '</text></svg>';
+  return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+}
+function toDisplay(html){
+  var d = new DOMParser().parseFromString("<body>" + String(html || "") + "</body>", "text/html");
+  d.querySelectorAll("img").forEach(function(i){
+    var src = i.getAttribute("src") || "";
+    if (!/^https:\/\//i.test(src)) return;
+    i.setAttribute("data-src", src);
+    i.setAttribute("src", tileFor(i));
+    i.setAttribute("title", "Your logo. It can't be shown inside claude.ai, but recipients will see it.");
+  });
+  return d.body.innerHTML;
+}
+function fromDisplay(html){
+  var d = new DOMParser().parseFromString("<body>" + String(html || "") + "</body>", "text/html");
+  d.querySelectorAll("img[data-src]").forEach(function(i){
+    i.setAttribute("src", i.getAttribute("data-src"));
+    i.removeAttribute("data-src");
+    i.removeAttribute("title");
+  });
+  return d.body.innerHTML;
+}
+
 /* Gmail's own default look, so the merged email reads like one typed in Gmail. */
 var MAIL_FONT = 'font-family:Arial,Helvetica,sans-serif;font-size:small;color:#222222';
 function buildHtml(row){
@@ -871,7 +904,7 @@ function renderWrite(){
   }).join("");
   if ($("f-subj").value !== S.subject) $("f-subj").value = S.subject;
   if ($("f-body").value !== S.body) $("f-body").value = S.body;
-  if (document.activeElement !== $("f-sig") && $("f-sig").innerHTML !== S.sig) $("f-sig").innerHTML = S.sig;
+  if (document.activeElement !== $("f-sig") && fromDisplay($("f-sig").innerHTML) !== S.sig) $("f-sig").innerHTML = toDisplay(S.sig);
   renderSigChecks();
   renderPreview();
 }
@@ -885,7 +918,9 @@ function renderSigChecks(){
       "It was pasted as a file rather than a link, and Gmail strips those. Copy the signature from a Gmail compose window instead (see <b>Copy it from Gmail</b>), or use <b>Add image from a link</b>.");
   } else if (srcs.length){
     out += notice("good", srcs.length === 1 ? "Logo is linked" : srcs.length + " images are linked",
-      "It loads from a public link, the same way your normal Gmail signature does.");
+      "claude.ai doesn't let this page load pictures from other sites, so it shows as a dashed tile here. " +
+      "The email carries the real link, the same way your normal Gmail signature does, so recipients see the logo. " +
+      "Open one of the drafts in Gmail to check.");
   }
   $("sig-checks").innerHTML = out;
 }
@@ -900,7 +935,7 @@ function renderPreview(){
   $("pv-to").textContent = r ? r.email : "—";
   $("pv-subj").innerHTML = merge(S.subject, r, true) || '<span style="color:var(--ink-3)">(no subject)</span>';
   $("pv-body").innerHTML = merge(S.body, r, true) +
-    (S.sig.trim() ? '<div class="sig sig-box" style="border:0;padding:0;max-height:none;min-height:0;white-space:normal">' + mergeHtml(sanitize(S.sig), r, true) + '</div>' : "");
+    (S.sig.trim() ? '<div class="sig sig-box" style="border:0;padding:0;max-height:none;min-height:0;white-space:normal">' + toDisplay(mergeHtml(sanitize(S.sig), r, true)) + '</div>' : "");
 
   var out = "";
   var unk = unknownTokens();
@@ -980,7 +1015,7 @@ function onEdit(el){
   if (el.id === "f-subj"){ S.subject = el.value; store("subject", S.subject); }
   if (el.id === "f-body"){ S.body = el.value; store("body", S.body); }
   if (el.id === "f-sig"){
-    S.sig = el.textContent.trim() || el.querySelector("img") ? el.innerHTML : "";
+    S.sig = el.textContent.trim() || el.querySelector("img") ? fromDisplay(el.innerHTML) : "";
     store("sigHtml", S.sig);
     renderSigChecks();
   } else {
@@ -1243,6 +1278,7 @@ function bind(){
     var html = cd.getData("text/html"), txt = cd.getData("text/plain");
     e.preventDefault();
     var clean = html ? sanitize(html) : plainToHtml(txt);
+    clean = toDisplay(clean);
     if (!document.execCommand("insertHTML", false, clean)){
       var s = window.getSelection();
       if (s.rangeCount){ var r = s.getRangeAt(0); r.deleteContents(); r.insertNode(r.createContextualFragment(clean)); }
@@ -1251,7 +1287,7 @@ function bind(){
     onEdit(sig);
   });
   sig.addEventListener("blur", function(){
-    var clean = sanitize(sig.innerHTML);
+    var clean = toDisplay(sanitize(fromDisplay(sig.innerHTML)));
     if (clean !== sig.innerHTML) sig.innerHTML = clean;
     onEdit(sig);
   });
@@ -1265,7 +1301,7 @@ function bind(){
       $("sig-checks").innerHTML = notice("bad", "That isn't an image link", "It needs to start with https://. Right-click an image on a website and choose <b>Copy image address</b>.");
       return;
     }
-    sig.innerHTML = sanitize(sig.innerHTML + '<br><img src="' + esc(u) + '" alt="" width="130">');
+    sig.innerHTML = toDisplay(sanitize(fromDisplay(sig.innerHTML) + '<br><img src="' + esc(u) + '" alt="" width="130">'));
     $("sig-img").hidden = true; $("sig-img-url").value = "";
     onEdit(sig);
   });
