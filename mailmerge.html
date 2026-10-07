@@ -1,0 +1,1147 @@
+<title>Lushsuite Mail Merge</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+/* Same Ebury palette and type as Lushsuite's Dealing Desk, so the two read as one tool.
+   Layout: three stages along a top rail — Sheet, Write, Send — each a single working surface. */
+:root{
+  --elegant-blue:#74B0CA; --warm-black:#231F20; --dark-blue:#224862;
+  --digital-blue:#9FF6F3; --warm-white:#F7F4EE;
+  --grey:#E0E0E0; --grey-dark:#A3A3A3; --charcoal:#737373;
+
+  --ground:var(--warm-white); --surface:#FFFFFF; --raised:#FFFFFF;
+  --ink:var(--warm-black); --ink-2:var(--charcoal); --ink-3:var(--grey-dark);
+  --rule:var(--grey); --rule-2:#EDE9E2;
+  --accent:var(--dark-blue); --accent-wash:#E4EFF4;
+  --btn-bg:var(--warm-black); --btn-ink:#FFFFFF;
+  --token:#1F5E7A; --token-wash:#DDEEF5;
+  --good:#14532D; --good-wash:#E3EFE7;
+  --warn:#6B4E0A; --warn-wash:#F6EFDC;
+  --crit:#7A1717; --crit-wash:#F8E4E4;
+  --focus:var(--dark-blue);
+  --shadow:rgba(35,31,32,.14);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:var(--warm-black); --surface:#2B2627; --raised:#342E30;
+    --ink:var(--warm-white); --ink-2:#C4BFB8; --ink-3:var(--grey-dark);
+    --rule:#433C3E; --rule-2:#332D2F;
+    --accent:var(--digital-blue); --accent-wash:#1D3336;
+    --btn-bg:var(--warm-white); --btn-ink:var(--warm-black);
+    --token:var(--digital-blue); --token-wash:#1D3336;
+    --good:#8FD1A0; --good-wash:#1C2A20;
+    --warn:#DCBD72; --warn-wash:#2E2717;
+    --crit:#E79A9A; --crit-wash:#33201F;
+    --focus:var(--elegant-blue);
+    --shadow:rgba(0,0,0,.4);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:var(--warm-black); --surface:#2B2627; --raised:#342E30;
+  --ink:var(--warm-white); --ink-2:#C4BFB8; --ink-3:var(--grey-dark);
+  --rule:#433C3E; --rule-2:#332D2F;
+  --accent:var(--digital-blue); --accent-wash:#1D3336;
+  --btn-bg:var(--warm-white); --btn-ink:var(--warm-black);
+  --token:var(--digital-blue); --token-wash:#1D3336;
+  --good:#8FD1A0; --good-wash:#1C2A20;
+  --warn:#DCBD72; --warn-wash:#2E2717;
+  --crit:#E79A9A; --crit-wash:#33201F;
+  --focus:var(--elegant-blue);
+  --shadow:rgba(0,0,0,.4);
+  color-scheme:dark;
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--ground); color:var(--ink);
+  font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Arial,sans-serif;
+  font-size:15px; line-height:1.55; -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3{text-wrap:balance;margin:0;font-family:Apparat,"Kmr Apparat",Inter,Arial,sans-serif;letter-spacing:-.02em}
+button,input,textarea,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px;border-radius:2px}
+.mono{font-family:"Roboto Mono",ui-monospace,Menlo,monospace;font-variant-numeric:tabular-nums}
+.sm{font-size:13px;color:var(--ink-2)}
+code{font-family:"Roboto Mono",ui-monospace,Menlo,monospace;font-size:.92em;background:var(--rule-2);padding:1px 5px;border-radius:4px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+/* ---------- rail ---------- */
+.rail{
+  position:sticky; top:env(safe-area-inset-top,0px); z-index:30;
+  background:color-mix(in srgb,var(--ground) 92%,transparent);
+  backdrop-filter:blur(10px); border-bottom:1px solid var(--rule);
+}
+.rail-in{max-width:1180px;margin:0 auto;padding:10px 20px;display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+.name{font-family:Apparat,"Kmr Apparat",Inter,Arial,sans-serif;font-weight:600;font-size:15px;letter-spacing:-.01em;white-space:nowrap}
+.steps{display:flex;gap:4px;flex-wrap:wrap;flex:1 1 auto;min-width:0}
+.step{
+  display:flex;align-items:baseline;gap:7px;padding:5px 12px 5px 10px;border-radius:999px;
+  border:1px solid transparent;color:var(--ink-3);font-size:13px;white-space:nowrap;background:none;cursor:default;
+}
+.step[data-reachable="1"]{cursor:pointer}
+.step .n{font-family:"Roboto Mono",monospace;font-size:11px;opacity:.75}
+.step[data-state="done"]{color:var(--ink-2)}
+.step[data-state="done"] .n::after{content:"✓";margin-left:3px;color:var(--good)}
+.step[data-state="now"]{color:var(--accent);border-color:color-mix(in srgb,var(--elegant-blue) 55%,transparent);background:var(--accent-wash);font-weight:600}
+.conn{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--ink-3);white-space:nowrap}
+.conn i{width:7px;height:7px;border-radius:50%;background:var(--ink-3);display:inline-block}
+.conn[data-s="ok"] i{background:var(--good)}
+.conn[data-s="bad"] i{background:var(--crit)}
+
+main{max-width:1180px;margin:0 auto;padding:0 20px 96px}
+.view{padding-top:34px}
+.head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:22px}
+.head h1{font-size:clamp(24px,3.4vw,32px);font-weight:600;line-height:1.15}
+.head p{margin:6px 0 0;color:var(--ink-2);max-width:62ch}
+
+/* ---------- buttons, notices ---------- */
+.btn{
+  display:inline-flex;align-items:center;gap:8px;cursor:pointer;white-space:nowrap;
+  border:1px solid var(--rule);background:var(--raised);color:var(--ink);
+  border-radius:10px;padding:9px 16px;font-size:14px;font-weight:500;
+  transition:border-color .14s,background .14s,opacity .14s;
+}
+.btn:hover:not(:disabled){border-color:var(--elegant-blue)}
+.btn.primary{background:var(--btn-bg);color:var(--btn-ink);border-color:var(--btn-bg)}
+.btn.primary:hover:not(:disabled){opacity:.88}
+.btn.danger{background:var(--crit);color:var(--surface);border-color:var(--crit)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.link{background:none;border:0;padding:0;color:var(--accent);cursor:pointer;text-decoration:underline;font-size:13px}
+.notice{border-radius:12px;padding:12px 16px;font-size:14px;border:1px solid transparent;margin-bottom:12px}
+.notice strong{display:block;margin-bottom:2px}
+.notice p{margin:0}
+.notice.warn{background:var(--warn-wash);color:var(--warn);border-color:color-mix(in srgb,var(--warn) 25%,transparent)}
+.notice.bad{background:var(--crit-wash);color:var(--crit);border-color:color-mix(in srgb,var(--crit) 25%,transparent)}
+.notice.info{background:var(--accent-wash);color:var(--ink);border-color:color-mix(in srgb,var(--elegant-blue) 40%,transparent)}
+.notice.good{background:var(--good-wash);color:var(--good);border-color:color-mix(in srgb,var(--good) 25%,transparent)}
+.pill{display:inline-block;font-size:11px;font-weight:600;letter-spacing:.03em;text-transform:uppercase;padding:2px 8px;border-radius:999px;white-space:nowrap}
+.pill.ok{background:var(--good-wash);color:var(--good)}
+.pill.warn{background:var(--warn-wash);color:var(--warn)}
+.pill.err{background:var(--crit-wash);color:var(--crit)}
+.pill.mute{background:var(--rule-2);color:var(--ink-2)}
+
+/* ---------- stage 1 : sheet ---------- */
+.drop{
+  display:grid;grid-template-columns:auto 1fr auto;gap:18px;align-items:center;
+  border:1.5px dashed color-mix(in srgb,var(--elegant-blue) 70%,var(--rule));
+  border-radius:16px;padding:22px 24px;background:var(--surface);
+  transition:background .14s,border-color .14s;
+}
+.drop.over{background:var(--accent-wash);border-color:var(--accent)}
+.drop .ico{width:46px;height:46px;border-radius:12px;display:grid;place-items:center;background:var(--accent-wash);color:var(--accent)}
+.drop b{display:block;font-size:15px}
+.drop .acts{display:flex;gap:8px;flex-wrap:wrap}
+@media (max-width:640px){.drop{grid-template-columns:1fr}.drop .ico{display:none}}
+.paste{margin-top:12px}
+.paste textarea{width:100%;min-height:120px;border:1px solid var(--rule);border-radius:12px;background:var(--surface);padding:12px 14px;font-family:"Roboto Mono",monospace;font-size:12.5px;resize:vertical}
+.paste .row{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+
+.sheetbar{display:flex;gap:18px;align-items:end;flex-wrap:wrap;margin:22px 0 12px}
+.field{display:flex;flex-direction:column;gap:5px;min-width:0}
+.field label{font-size:12px;font-weight:600;color:var(--ink-2);letter-spacing:.02em}
+select,input[type=text]{
+  border:1px solid var(--rule);background:var(--raised);border-radius:9px;padding:8px 11px;font-size:14px;min-width:0;
+}
+.counts{display:flex;gap:16px;flex-wrap:wrap;margin-left:auto;font-size:13px;color:var(--ink-2)}
+.counts b{color:var(--ink);font-weight:600}
+
+.tablewrap{overflow:auto;max-height:520px;border:1px solid var(--rule);border-radius:12px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th,td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--rule-2);white-space:nowrap;max-width:280px;overflow:hidden;text-overflow:ellipsis}
+th{position:sticky;top:0;background:var(--raised);z-index:1;font-weight:600;font-size:12.5px;color:var(--ink-2);border-bottom:1px solid var(--rule)}
+th .tok{display:block;font-family:"Roboto Mono",monospace;font-weight:500;font-size:11px;color:var(--token)}
+th.email-col,td.email-col{background:color-mix(in srgb,var(--accent-wash) 55%,transparent)}
+tr.off td{opacity:.42}
+td.chk,th.chk{width:36px;padding-right:0}
+td.st{width:1%}
+.foot{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-top:16px}
+
+/* ---------- stage 2 : write ---------- */
+.write{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:24px;align-items:start}
+@media (max-width:900px){.write{grid-template-columns:1fr}}
+.card{background:var(--surface);border:1px solid var(--rule);border-radius:16px;padding:18px 20px}
+.compose .field{margin-bottom:14px}
+.compose input[type=text]{width:100%;font-size:15px}
+.compose textarea{
+  width:100%;border:1px solid var(--rule);background:var(--raised);border-radius:10px;
+  padding:11px 13px;font-size:14.5px;line-height:1.6;resize:vertical;
+}
+#f-body{min-height:260px}
+#f-sig{min-height:110px}
+.lbl-row{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.hint{font-size:12px;color:var(--ink-3)}
+.fields-box{margin-bottom:16px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.chip{
+  display:inline-flex;align-items:center;gap:4px;cursor:pointer;border:1px solid color-mix(in srgb,var(--token) 30%,transparent);
+  background:var(--token-wash);color:var(--token);border-radius:7px;padding:3px 9px;
+  font-family:"Roboto Mono",monospace;font-size:12.5px;
+}
+.chip:hover{border-color:var(--token)}
+.chip small{font-family:Inter,sans-serif;color:var(--ink-3);font-size:10.5px}
+.suggest{
+  position:relative;margin-top:4px;display:flex;flex-wrap:wrap;gap:4px;align-items:center;
+  padding:6px 8px;border-radius:9px;background:var(--raised);border:1px solid var(--elegant-blue);
+  box-shadow:0 8px 24px -12px var(--shadow);font-size:12px;
+}
+.suggest .chip[aria-selected="true"]{background:var(--token);color:var(--surface)}
+details.fb{margin-top:10px}
+details.fb summary{cursor:pointer;font-size:12.5px;color:var(--ink-2)}
+.fb-grid{display:grid;grid-template-columns:auto 1fr;gap:6px 10px;align-items:center;margin-top:8px}
+.fb-grid span{font-family:"Roboto Mono",monospace;font-size:12.5px;color:var(--token)}
+.fb-grid input{font-size:13px;padding:6px 9px}
+
+.preview{position:sticky;top:calc(env(safe-area-inset-top,0px) + 70px)}
+.pv-nav{display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.pv-nav .who{flex:1;min-width:0;font-size:13px;color:var(--ink-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pv-nav button{width:32px;height:32px;padding:0;justify-content:center}
+.mail{background:var(--raised);border:1px solid var(--rule);border-radius:14px;overflow:hidden;box-shadow:0 18px 40px -32px var(--shadow)}
+.mail-h{padding:12px 16px;border-bottom:1px solid var(--rule-2);font-size:13px;display:grid;grid-template-columns:auto 1fr;gap:3px 12px}
+.mail-h span{color:var(--ink-3)}
+.mail-h div{min-width:0;overflow-wrap:anywhere}
+.mail-subj{font-weight:600;color:var(--ink)}
+.mail-b{padding:16px 18px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:14.5px;line-height:1.62}
+.mail-b .sig{display:block;margin-top:14px;color:var(--ink-2)}
+mark.v{background:var(--token-wash);color:inherit;border-radius:3px;padding:0 2px}
+mark.fbv{background:var(--warn-wash);color:var(--warn);border-radius:3px;padding:0 2px}
+mark.miss{background:var(--crit-wash);color:var(--crit);border-radius:3px;padding:0 2px}
+.checks{margin-top:14px}
+
+/* ---------- stage 3 : send ---------- */
+.summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:18px}
+@media (max-width:720px){.summary{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.stat{background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:12px 14px}
+.stat b{display:block;font-size:24px;font-weight:600;font-variant-numeric:tabular-nums;font-family:Apparat,"Kmr Apparat",Inter,sans-serif}
+.stat span{font-size:12px;color:var(--ink-2)}
+.choose{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media (max-width:760px){.choose{grid-template-columns:1fr}}
+.opt h3{font-size:18px;margin-bottom:6px}
+.opt p{margin:0 0 14px;color:var(--ink-2);font-size:14px}
+.opt .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.opt input[type=text]{width:92px}
+.progress{margin-top:20px}
+.bar{height:6px;border-radius:999px;background:var(--rule-2);overflow:hidden;margin:8px 0 12px}
+.bar i{display:block;height:100%;width:0;background:var(--elegant-blue);transition:width .3s}
+.log{max-height:360px;overflow:auto;border:1px solid var(--rule);border-radius:12px;background:var(--surface)}
+.log div{display:grid;grid-template-columns:auto minmax(0,1fr) minmax(0,1.3fr);gap:12px;align-items:center;padding:7px 12px;border-bottom:1px solid var(--rule-2);font-size:13px}
+.log .addr{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.log .why{color:var(--ink-2);overflow-wrap:anywhere}
+@media (max-width:560px){.log div{grid-template-columns:auto minmax(0,1fr)}.log .why{grid-column:1/-1}}
+</style>
+
+<header class="rail">
+  <div class="rail-in">
+    <span class="name">Mail Merge</span>
+    <nav class="steps" id="steps" aria-label="Stages"></nav>
+    <span class="conn" id="conn" data-s="wait"><i></i><span>Checking Gmail…</span></span>
+  </div>
+</header>
+
+<main>
+  <!-- ================= 1 · Sheet ================= -->
+  <section class="view" id="v0">
+    <div class="head">
+      <div>
+        <h1>Upload your contact sheet</h1>
+        <p>Excel, CSV or a Google Sheet. Every column becomes a field you can drop into the email, so a column called <b>First Name</b> becomes <code>@FirstName</code>.</p>
+      </div>
+    </div>
+
+    <div class="drop" id="drop">
+      <div class="ico" aria-hidden="true">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h6M9 9h1"/></svg>
+      </div>
+      <div>
+        <b id="drop-title">Drop a .xlsx, .xls, .csv or .ods file here</b>
+        <span class="sm" id="drop-sub">From Google Sheets: File → Download → Microsoft Excel (.xlsx), or copy the cells and paste them in.</span>
+      </div>
+      <div class="acts">
+        <label class="btn primary" for="file">Choose file</label>
+        <input id="file" type="file" accept=".xlsx,.xls,.csv,.tsv,.ods,.txt" hidden>
+        <button class="btn" id="btn-paste" type="button">Paste cells</button>
+      </div>
+    </div>
+    <div class="paste" id="paste" hidden>
+      <textarea id="paste-text" placeholder="Select the cells in Google Sheets or Excel, including the header row, copy, and paste here."></textarea>
+      <div class="row">
+        <button class="btn primary" id="btn-paste-go" type="button">Use these rows</button>
+        <button class="btn" id="btn-paste-x" type="button">Cancel</button>
+      </div>
+    </div>
+
+    <div id="sheet-msg" style="margin-top:14px"></div>
+
+    <div class="sheetbar">
+      <div class="field" id="sheet-pick-wrap" hidden>
+        <label for="sheet-pick">Tab</label>
+        <select id="sheet-pick"></select>
+      </div>
+      <div class="field">
+        <label for="email-col">Email column</label>
+        <select id="email-col"></select>
+      </div>
+      <div class="counts" id="counts"></div>
+    </div>
+
+    <div class="tablewrap"><table id="grid"></table></div>
+
+    <div class="foot">
+      <span class="sm">Untick anyone you don't want to email. Rows with a missing or invalid address, and repeat addresses, are left out automatically.</span>
+      <button class="btn primary" id="to-write" type="button">Write the email →</button>
+    </div>
+  </section>
+
+  <!-- ================= 2 · Write ================= -->
+  <section class="view" id="v1" hidden>
+    <div class="head">
+      <div>
+        <h1>Write it once</h1>
+        <p>Type <code>@</code> anywhere to pull in a column from your sheet. Each recipient gets their own values; the preview shows exactly what they'll receive.</p>
+      </div>
+    </div>
+    <div class="write">
+      <div class="card compose">
+        <div class="fields-box">
+          <div class="lbl-row"><label style="font-size:12px;font-weight:600;color:var(--ink-2)">Fields from your sheet</label><span class="hint">Click to insert</span></div>
+          <div class="chips" id="chips"></div>
+          <details class="fb">
+            <summary>If a cell is blank, use…</summary>
+            <div class="fb-grid" id="fb-grid"></div>
+          </details>
+        </div>
+
+        <div class="field">
+          <label for="f-subj">Subject</label>
+          <input id="f-subj" type="text" autocomplete="off">
+          <div class="suggest" id="sg-subj" hidden></div>
+        </div>
+        <div class="field">
+          <label for="f-body">Message</label>
+          <textarea id="f-body" spellcheck="true"></textarea>
+          <div class="suggest" id="sg-body" hidden></div>
+        </div>
+        <div class="field" style="margin-bottom:0">
+          <div class="lbl-row"><label for="f-sig">Signature</label><span class="hint">Added under every email · saved in this browser</span></div>
+          <textarea id="f-sig" spellcheck="true"></textarea>
+          <div class="suggest" id="sg-sig" hidden></div>
+        </div>
+      </div>
+
+      <div class="preview">
+        <div class="pv-nav">
+          <button class="btn" id="pv-prev" type="button" aria-label="Previous recipient">‹</button>
+          <span class="who mono" id="pv-who"></span>
+          <button class="btn" id="pv-next" type="button" aria-label="Next recipient">›</button>
+        </div>
+        <div class="mail">
+          <div class="mail-h">
+            <span>To</span><div class="mono" id="pv-to"></div>
+            <span>Subject</span><div class="mail-subj" id="pv-subj"></div>
+          </div>
+          <div class="mail-b" id="pv-body"></div>
+        </div>
+        <div class="checks" id="checks"></div>
+        <div class="foot">
+          <button class="btn" id="back-sheet" type="button">← Sheet</button>
+          <button class="btn primary" id="to-send" type="button">Review and send →</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 3 · Send ================= -->
+  <section class="view" id="v2" hidden>
+    <div class="head">
+      <div>
+        <h1>Draft or send</h1>
+        <p>Each person gets their own email from your Gmail. Nobody sees anyone else's address, and replies come back as normal threads.</p>
+      </div>
+    </div>
+    <div class="summary" id="summary"></div>
+    <div id="send-notices"></div>
+    <div class="choose" id="choose">
+      <div class="card opt">
+        <h3>Save as Gmail drafts</h3>
+        <p>One personalised draft per recipient in your Drafts folder. Nothing is sent, so you can open a few and check them first.</p>
+        <div class="row"><button class="btn primary" id="btn-draft" type="button">Create drafts</button></div>
+      </div>
+      <div class="card opt">
+        <h3>Send now</h3>
+        <p>Sends every email straight away, one at a time. This can't be undone. Type the number of recipients to unlock it.</p>
+        <div class="row">
+          <input id="confirm-n" class="mono" type="text" inputmode="numeric" autocomplete="off" aria-label="Type the recipient count to unlock sending">
+          <button class="btn danger" id="btn-send" type="button" disabled>Send</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="progress" id="progress" hidden>
+      <div class="lbl-row"><span id="pg-status" class="sm"></span><button class="btn" id="btn-stop" type="button">Stop</button></div>
+      <div class="bar"><i id="pg-bar"></i></div>
+      <div class="log" id="log"></div>
+      <div id="pg-done" style="margin-top:14px"></div>
+    </div>
+
+    <div class="foot">
+      <button class="btn" id="back-write" type="button">← Edit email</button>
+    </div>
+  </section>
+</main>
+
+<script>
+(function(){
+"use strict";
+
+var GMAIL = "Gmail";
+var PACE_MS = 900;
+var $ = function(id){ return document.getElementById(id); };
+
+/* Example rows use example.com, a domain reserved so it can never deliver.
+   Sending is blocked while they are loaded. */
+var EXAMPLE = {
+  name: "Example rows",
+  aoa: [
+    ["First Name","Last Name","Company","Job Title","Email","City"],
+    ["Priya","Shah","Harbourline Foods","Finance Director","priya.shah@example.com","Southampton"],
+    ["Tom","Ellery","Northgate Components","CFO","t.ellery@example.com","Birmingham"],
+    ["Amira","Haddad","Gulfstar Trading","Managing Director","amira@example.com","Dubai"],
+    ["James","O'Neill","Kestrel Marine Supplies","Head of Finance","","Portsmouth"],
+    ["Leah","Morgan","Brightfield Textiles","Financial Controller","leah.morgan@example","Leeds"],
+    ["Daniel","Price","Ashby Wine Importers","Owner","dprice@example.com","Guildford"]
+  ]
+};
+
+var DEFAULTS = {
+  subject: "@Company and paying overseas suppliers",
+  body: "Hi @FirstName,\n\nI work with finance teams at importers and distributors on how they pay overseas suppliers and manage currency exposure.\n\nFor a business like @Company, the two things that usually come up are cash tied up between paying a supplier and getting paid by your own customers, and margin moving with the exchange rate. We help with both.\n\nWould you be open to a 15-minute call in the next couple of weeks to see whether any of it is relevant?\n\nBest,",
+  sig: "Kayln Stock\nFX & Trade Finance\n\nYou're receiving this because of your role at @Company. Reply \"no thanks\" and I won't contact you again."
+};
+
+var S = {
+  step: 0, reached: 0,
+  example: true, fileName: "",
+  book: {},           // tab name -> array of arrays
+  tabs: [], tab: "",
+  fields: [],         // {label, key, col, derived}
+  rows: [],           // {id, cells, include}
+  emailCol: -1,
+  subject: "", body: "", sig: "", fallbacks: {},
+  pv: 0,
+  mcp: null, gmailState: "wait", canSend: null,
+  run: null           // {mode, stop}
+};
+
+/* ============================================================
+   Helpers
+   ============================================================ */
+function esc(s){
+  return String(s == null ? "" : s).replace(/[&<>"']/g, function(c){
+    return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
+  });
+}
+function notice(kind, title, body){
+  return '<div class="notice ' + kind + '"><strong>' + esc(title) + '</strong><p>' + body + '</p></div>';
+}
+function store(k, v){ try { localStorage.setItem("merge." + k, typeof v === "string" ? v : JSON.stringify(v)); } catch(e){} }
+function recall(k){ try { return localStorage.getItem("merge." + k); } catch(e){ return null; } }
+var EMAIL_RE = /^[^\s@<>(),;:"]+@[^\s@<>(),;:"]+\.[A-Za-z]{2,}$/;
+function cleanEmail(v){ return String(v || "").trim().replace(/^mailto:/i, "").replace(/^<|>$/g, ""); }
+
+/* ============================================================
+   Sheet → fields and rows
+   ============================================================ */
+function keyOf(label, i){
+  var k = String(label || "").replace(/[^A-Za-z0-9]+(.)?/g, function(_, c){ return c ? c.toUpperCase() : ""; });
+  k = k.replace(/^[^A-Za-z]+/, "");
+  if (!k) k = "Column" + (i + 1);
+  return k.charAt(0).toUpperCase() + k.slice(1);
+}
+
+function loadTable(aoa){
+  /* First row with anything in it is the header row. */
+  var start = 0;
+  while (start < aoa.length && !aoa[start].some(function(c){ return String(c).trim(); })) start++;
+  var head = (aoa[start] || []).map(function(c){ return String(c).trim(); });
+  var width = head.length;
+  aoa.slice(start + 1).forEach(function(r){ if (r.length > width) width = r.length; });
+
+  var used = {};
+  S.fields = [];
+  for (var i = 0; i < width; i++){
+    var label = head[i] || ("Column " + (i + 1));
+    var key = keyOf(label, i), n = 2, base = key;
+    while (used[key.toLowerCase()]) key = base + (n++);
+    used[key.toLowerCase()] = 1;
+    S.fields.push({ label: label, key: key, col: i, derived: false });
+  }
+
+  S.rows = aoa.slice(start + 1)
+    .filter(function(r){ return r.some(function(c){ return String(c).trim(); }); })
+    .map(function(r, i){
+      var cells = [];
+      for (var j = 0; j < width; j++) cells.push(String(r[j] == null ? "" : r[j]).trim());
+      return { id: i, cells: cells, include: true };
+    });
+
+  /* A sheet with only a full-name column still gets @FirstName. */
+  var hasFirst = S.fields.some(function(f){ return /^(first(name)?|forename|givenname)$/i.test(f.key); });
+  var full = S.fields.filter(function(f){ return /^(full)?name$|^contact(name)?$/i.test(f.key); })[0];
+  if (!hasFirst && full && !used.firstname){
+    var col = S.fields.length;
+    S.fields.push({ label: "First name (from " + full.label + ")", key: "FirstName", col: col, derived: true });
+    S.rows.forEach(function(r){
+      var w = (r.cells[full.col] || "").split(/\s+/)[0] || "";
+      if (/^(mr|mrs|ms|miss|dr|prof)\.?$/i.test(w)) w = (r.cells[full.col] || "").split(/\s+/)[1] || "";
+      r.cells[col] = w;
+    });
+  }
+
+  S.emailCol = guessEmailCol();
+  S.pv = 0;
+}
+
+function guessEmailCol(){
+  var byName = S.fields.filter(function(f){ return !f.derived && /e-?mail/i.test(f.label); })[0];
+  if (byName) return byName.col;
+  /* No header says email: take the column where most cells look like one. */
+  var best = -1, bestN = 0;
+  S.fields.forEach(function(f){
+    var n = S.rows.filter(function(r){ return EMAIL_RE.test(cleanEmail(r.cells[f.col])); }).length;
+    if (n > bestN){ best = f.col; bestN = n; }
+  });
+  return best;
+}
+
+/* Per-row status: ok, missing, invalid, duplicate. */
+function audit(){
+  var seen = {};
+  S.rows.forEach(function(r){
+    var e = S.emailCol >= 0 ? cleanEmail(r.cells[S.emailCol]) : "";
+    r.email = e;
+    if (!e) r.status = "missing";
+    else if (!EMAIL_RE.test(e)) r.status = "invalid";
+    else if (seen[e.toLowerCase()]) r.status = "duplicate";
+    else { r.status = "ok"; seen[e.toLowerCase()] = 1; }
+  });
+}
+function recipients(){
+  return S.rows.filter(function(r){ return r.status === "ok" && r.include; });
+}
+
+function readFile(file){
+  S.fileName = file.name;
+  $("sheet-msg").innerHTML = "";
+  var rd = new FileReader();
+  rd.onerror = function(){
+    $("sheet-msg").innerHTML = notice("bad", "Couldn't read that file", "Your browser refused to open it. Try saving it again and choosing it once more.");
+  };
+  rd.onload = function(){
+    if (typeof XLSX === "undefined"){
+      $("sheet-msg").innerHTML = notice("bad", "The spreadsheet reader didn't load",
+        "Check your connection and reload the page. In the meantime you can copy the cells and use <b>Paste cells</b>.");
+      return;
+    }
+    try {
+      var wb = XLSX.read(new Uint8Array(rd.result), { type: "array" });
+      useWorkbook(wb, file.name);
+    } catch(e){
+      $("sheet-msg").innerHTML = notice("bad", "That file isn't a spreadsheet this page can read",
+        "Save it as .xlsx or .csv and try again. Password-protected workbooks can't be opened.");
+    }
+  };
+  rd.readAsArrayBuffer(file);
+}
+
+function useWorkbook(wb, name){
+  S.book = {};
+  S.tabs = [];
+  wb.SheetNames.forEach(function(n){
+    var aoa = XLSX.utils.sheet_to_json(wb.Sheets[n], { header: 1, defval: "", raw: false, blankrows: false });
+    if (aoa.length) { S.book[n] = aoa; S.tabs.push(n); }
+  });
+  if (!S.tabs.length){
+    $("sheet-msg").innerHTML = notice("bad", "That sheet is empty", "No rows were found on any tab.");
+    return;
+  }
+  S.example = false;
+  S.fileName = name;
+  pickTab(S.tabs[0]);
+}
+
+function pickTab(n){
+  S.tab = n;
+  loadTable(S.book[n]);
+  renderSheet();
+}
+
+function usePaste(text){
+  if (!text.trim()) return;
+  var aoa;
+  if (typeof XLSX !== "undefined"){
+    var wb = XLSX.read(text, { type: "string", raw: false });
+    useWorkbook(wb, "Pasted cells");
+  } else {
+    var delim = text.indexOf("\t") >= 0 ? "\t" : ",";
+    aoa = text.replace(/\r/g, "").split("\n").map(function(l){ return l.split(delim); });
+    S.book = { "Pasted cells": aoa }; S.tabs = ["Pasted cells"]; S.example = false; S.fileName = "Pasted cells";
+    pickTab("Pasted cells");
+  }
+  $("paste").hidden = true;
+  $("paste-text").value = "";
+}
+
+/* ============================================================
+   Merge
+   ============================================================ */
+/* @Field is a token only when the @ isn't part of an email address. */
+var TOKEN_RE = /(^|[^A-Za-z0-9_.@+-])@([A-Za-z][A-Za-z0-9_]*)/g;
+
+function fieldMap(){
+  var m = {};
+  S.fields.forEach(function(f){ m[f.key.toLowerCase()] = f; });
+  return m;
+}
+
+/* Returns plain text, or highlighted HTML for the preview. */
+function merge(tpl, row, html){
+  var m = fieldMap();
+  var parts = [], last = 0;
+  String(tpl || "").replace(TOKEN_RE, function(all, pre, name, off){
+    var f = m[name.toLowerCase()];
+    if (!f) return all;
+    var at = off + pre.length;
+    parts.push({ t: tpl.slice(last, at) });
+    var v = row ? (row.cells[f.col] || "") : "";
+    var fb = S.fallbacks[f.key] || "";
+    parts.push(v ? { v: v } : (fb ? { fb: fb } : { miss: "@" + f.key }));
+    last = at + 1 + name.length;
+    return all;
+  });
+  parts.push({ t: String(tpl || "").slice(last) });
+  return parts.map(function(p){
+    if (p.t != null) return html ? esc(p.t) : p.t;
+    if (p.v != null) return html ? '<mark class="v">' + esc(p.v) + '</mark>' : p.v;
+    if (p.fb != null) return html ? '<mark class="fbv" title="Blank in the sheet, using your fallback">' + esc(p.fb) + '</mark>' : p.fb;
+    return html ? '<mark class="miss" title="Blank in the sheet and no fallback set">' + esc(p.miss) + '</mark>' : "";
+  }).join("");
+}
+
+function tokensIn(tpl){
+  var out = [];
+  String(tpl || "").replace(TOKEN_RE, function(all, pre, name){ out.push(name); return all; });
+  return out;
+}
+/* @Words that aren't columns: almost always a typo in a field name. */
+function unknownTokens(){
+  var m = fieldMap(), bad = {};
+  [S.subject, S.body, S.sig].forEach(function(t){
+    tokensIn(t).forEach(function(n){ if (!m[n.toLowerCase()]) bad[n] = 1; });
+  });
+  return Object.keys(bad);
+}
+/* Fields used in the email that are blank for some recipients with no fallback. */
+function blanks(){
+  var m = fieldMap(), used = {}, out = [];
+  [S.subject, S.body, S.sig].forEach(function(t){
+    tokensIn(t).forEach(function(n){ var f = m[n.toLowerCase()]; if (f) used[f.key] = f; });
+  });
+  Object.keys(used).forEach(function(k){
+    var f = used[k];
+    if (S.fallbacks[k]) return;
+    var n = recipients().filter(function(r){ return !(r.cells[f.col] || ""); }).length;
+    if (n) out.push({ f: f, n: n });
+  });
+  return out;
+}
+
+/* ============================================================
+   Navigation
+   ============================================================ */
+var STEPS = ["Sheet", "Write", "Send"];
+function go(i){
+  if (S.run && i !== 2) return;
+  S.step = i;
+  if (i > S.reached) S.reached = i;
+  [0,1,2].forEach(function(k){ $("v" + k).hidden = k !== i; });
+  renderSteps();
+  if (i === 1) renderWrite();
+  if (i === 2) renderSend();
+  window.scrollTo(0, 0);
+}
+function renderSteps(){
+  $("steps").innerHTML = STEPS.map(function(n, i){
+    var st = i === S.step ? "now" : (i < S.reached || i < S.step ? "done" : "todo");
+    var reach = i <= S.reached && i !== S.step && !S.run;
+    return '<button class="step" type="button" data-i="' + i + '" data-state="' + st + '" data-reachable="' + (reach ? 1 : 0) + '"' +
+      (reach ? "" : ' tabindex="-1"') + '><span class="n">' + (i + 1) + '</span>' + n + '</button>';
+  }).join("");
+}
+
+/* ============================================================
+   Stage 1 render
+   ============================================================ */
+function renderSheet(){
+  audit();
+  $("sheet-pick-wrap").hidden = S.tabs.length < 2;
+  $("sheet-pick").innerHTML = S.tabs.map(function(t){
+    return '<option' + (t === S.tab ? " selected" : "") + '>' + esc(t) + '</option>';
+  }).join("");
+
+  $("email-col").innerHTML = (S.emailCol < 0 ? '<option value="-1">Choose a column</option>' : "") +
+    S.fields.filter(function(f){ return !f.derived; }).map(function(f){
+      return '<option value="' + f.col + '"' + (f.col === S.emailCol ? " selected" : "") + '>' + esc(f.label) + '</option>';
+    }).join("");
+
+  if (S.example){
+    $("drop-title").textContent = "Drop a .xlsx, .xls, .csv or .ods file here";
+    $("sheet-msg").innerHTML = notice("info", "These are example rows",
+      "They show how the page works. Upload your own sheet to replace them. Nothing can be sent while the examples are loaded.");
+  } else {
+    $("drop-title").textContent = S.fileName + " · " + S.rows.length + " rows";
+  }
+
+  var c = { ok:0, missing:0, invalid:0, duplicate:0 };
+  S.rows.forEach(function(r){ c[r.status]++; });
+  var off = S.rows.filter(function(r){ return r.status === "ok" && !r.include; }).length;
+  $("counts").innerHTML =
+    '<span><b>' + recipients().length + '</b> will be emailed</span>' +
+    (off ? '<span><b>' + off + '</b> unticked</span>' : "") +
+    (c.missing ? '<span><b>' + c.missing + '</b> no email</span>' : "") +
+    (c.invalid ? '<span><b>' + c.invalid + '</b> invalid</span>' : "") +
+    (c.duplicate ? '<span><b>' + c.duplicate + '</b> repeats</span>' : "");
+
+  var allOn = S.rows.filter(function(r){ return r.status === "ok"; }).every(function(r){ return r.include; });
+  var h = '<thead><tr><th class="chk"><input type="checkbox" id="chk-all" aria-label="Include everyone"' + (allOn ? " checked" : "") + '></th><th>Status</th>';
+  S.fields.forEach(function(f){
+    h += '<th class="' + (f.col === S.emailCol ? "email-col" : "") + '">' + esc(f.label) + '<span class="tok">@' + esc(f.key) + '</span></th>';
+  });
+  h += '</tr></thead><tbody>';
+  var LIMIT = 500;
+  S.rows.slice(0, LIMIT).forEach(function(r){
+    var ok = r.status === "ok";
+    var pill = ok ? (r.include ? '<span class="pill ok">ready</span>' : '<span class="pill mute">skipped</span>')
+      : r.status === "missing" ? '<span class="pill err">no email</span>'
+      : r.status === "invalid" ? '<span class="pill err">invalid</span>'
+      : '<span class="pill warn">repeat</span>';
+    h += '<tr class="' + (ok && r.include ? "" : "off") + '"><td class="chk"><input type="checkbox" data-row="' + r.id + '"' +
+      (ok && r.include ? " checked" : "") + (ok ? "" : " disabled") + ' aria-label="Include row ' + (r.id + 1) + '"></td><td class="st">' + pill + '</td>';
+    S.fields.forEach(function(f){
+      var v = r.cells[f.col] || "";
+      h += '<td class="' + (f.col === S.emailCol ? "email-col mono" : "") + '" title="' + esc(v) + '">' + esc(v) + '</td>';
+    });
+    h += '</tr>';
+  });
+  if (S.rows.length > LIMIT){
+    h += '<tr><td colspan="' + (S.fields.length + 2) + '" class="sm">Showing the first ' + LIMIT + ' of ' + S.rows.length + ' rows. All of them are included.</td></tr>';
+  }
+  h += '</tbody>';
+  $("grid").innerHTML = h;
+  $("to-write").disabled = !recipients().length;
+}
+
+/* ============================================================
+   Stage 2 render
+   ============================================================ */
+var lastFocus = null;
+
+function renderWrite(){
+  $("chips").innerHTML = S.fields.map(function(f){
+    return '<button class="chip" type="button" data-key="' + esc(f.key) + '" title="' + esc(f.label) + '">@' + esc(f.key) + '</button>';
+  }).join("");
+  $("fb-grid").innerHTML = S.fields.filter(function(f){ return f.col !== S.emailCol; }).map(function(f){
+    return '<span>@' + esc(f.key) + '</span><input type="text" id="fb-' + esc(f.key) + '" data-fb="' + esc(f.key) + '" value="' +
+      esc(S.fallbacks[f.key] || "") + '" placeholder="' + (/first/i.test(f.key) ? "e.g. there" : "leave blank to flag it") + '">';
+  }).join("");
+  if ($("f-subj").value !== S.subject) $("f-subj").value = S.subject;
+  if ($("f-body").value !== S.body) $("f-body").value = S.body;
+  if ($("f-sig").value !== S.sig) $("f-sig").value = S.sig;
+  renderPreview();
+}
+
+function renderPreview(){
+  var list = recipients();
+  if (S.pv >= list.length) S.pv = Math.max(0, list.length - 1);
+  var r = list[S.pv];
+  $("pv-who").textContent = list.length ? (S.pv + 1) + " of " + list.length + " · " + (r ? r.email : "") : "No recipients";
+  $("pv-prev").disabled = S.pv <= 0;
+  $("pv-next").disabled = S.pv >= list.length - 1;
+  $("pv-to").textContent = r ? r.email : "—";
+  $("pv-subj").innerHTML = merge(S.subject, r, true) || '<span style="color:var(--ink-3)">(no subject)</span>';
+  $("pv-body").innerHTML = merge(S.body, r, true) + (S.sig ? '<span class="sig">' + merge(S.sig, r, true) + '</span>' : "");
+
+  var out = "";
+  var unk = unknownTokens();
+  if (unk.length){
+    out += notice("bad", "Not a column in your sheet",
+      unk.map(function(n){ return "<code>@" + esc(n) + "</code>"; }).join(" ") +
+      " will go out exactly as typed. Check the spelling against the fields above.");
+  }
+  blanks().forEach(function(b){
+    out += notice("warn", b.n + " recipient" + (b.n === 1 ? " has" : "s have") + " a blank " + b.f.label,
+      "<code>@" + esc(b.f.key) + "</code> will be left empty for them. Set a fallback under <b>If a cell is blank, use…</b>, or fix the sheet.");
+  });
+  if (!tokensIn(S.body).length && list.length > 1){
+    out += notice("warn", "Every email is identical", "Nothing in the message changes per person, which reads as bulk mail. Try starting with <code>Hi @" + esc(firstKey()) + ",</code>");
+  }
+  if (!S.subject.trim()) out += notice("warn", "No subject", "Emails without a subject are far more likely to land in spam.");
+  $("checks").innerHTML = out;
+  $("to-send").disabled = !list.length || !S.body.trim();
+}
+function firstKey(){
+  var f = S.fields.filter(function(f){ return /first/i.test(f.key); })[0];
+  return f ? f.key : (S.fields[0] ? S.fields[0].key : "FirstName");
+}
+
+/* Insert @Field at the caret of whichever box was last focused. */
+function insertToken(key){
+  var el = lastFocus || $("f-body");
+  var v = el.value, s = el.selectionStart == null ? v.length : el.selectionStart, e = el.selectionEnd == null ? s : el.selectionEnd;
+  var before = v.slice(0, s);
+  /* Replace a half-typed @fra if the caret is sitting on one. */
+  var m = before.match(/(^|[^A-Za-z0-9_.@+-])@([A-Za-z0-9_]*)$/);
+  if (m) before = before.slice(0, before.length - m[2].length - 1);
+  var ins = "@" + key;
+  el.value = before + ins + v.slice(e);
+  var p = before.length + ins.length;
+  el.focus();
+  try { el.setSelectionRange(p, p); } catch(x){}
+  onEdit(el);
+}
+
+/* @-autocomplete under each box. */
+var sgState = { el: null, items: [], sel: 0 };
+function sgBox(el){ return $(el.id === "f-subj" ? "sg-subj" : el.id === "f-body" ? "sg-body" : "sg-sig"); }
+function updateSuggest(el){
+  ["sg-subj","sg-body","sg-sig"].forEach(function(id){ if (!el || sgBox(el).id !== id) $(id).hidden = true; });
+  if (!el) return;
+  var before = el.value.slice(0, el.selectionStart || 0);
+  var m = before.match(/(^|[^A-Za-z0-9_.@+-])@([A-Za-z0-9_]*)$/);
+  var box = sgBox(el);
+  if (!m){ box.hidden = true; sgState.el = null; return; }
+  var q = m[2].toLowerCase();
+  var items = S.fields.filter(function(f){
+    return !q || f.key.toLowerCase().indexOf(q) >= 0 || f.label.toLowerCase().indexOf(q) >= 0;
+  });
+  if (!items.length || (items.length === 1 && items[0].key.toLowerCase() === q)){ box.hidden = true; sgState.el = null; return; }
+  if (sgState.el !== el || sgState.items.length !== items.length) sgState.sel = 0;
+  sgState = { el: el, items: items, sel: Math.min(sgState.sel, items.length - 1) };
+  box.innerHTML = '<span class="hint" style="margin-right:4px">Field:</span>' + items.map(function(f, i){
+    return '<button class="chip" type="button" tabindex="-1" data-key="' + esc(f.key) + '" aria-selected="' + (i === sgState.sel) + '">@' + esc(f.key) + '</button>';
+  }).join("") + '<span class="hint" style="margin-left:auto">↵ to insert · Esc</span>';
+  box.hidden = false;
+}
+
+function onEdit(el){
+  if (el.id === "f-subj"){ S.subject = el.value; store("subject", S.subject); }
+  if (el.id === "f-body"){ S.body = el.value; store("body", S.body); }
+  if (el.id === "f-sig"){ S.sig = el.value; store("sig", S.sig); }
+  updateSuggest(el);
+  renderPreview();
+}
+
+/* ============================================================
+   Stage 3 render and run
+   ============================================================ */
+function renderSend(){
+  var list = recipients();
+  var skipped = S.rows.length - list.length;
+  var already = list.filter(function(r){ return r.done; }).length;
+  $("summary").innerHTML =
+    '<div class="stat"><b>' + list.length + '</b><span>recipients</span></div>' +
+    '<div class="stat"><b>' + skipped + '</b><span>rows left out</span></div>' +
+    '<div class="stat"><b>' + (S.subject ? merge(S.subject, list[0], false).length : 0) + '</b><span>characters in subject</span></div>' +
+    '<div class="stat"><b>' + Math.max(1, Math.ceil(list.length * PACE_MS / 60000)) + ' min</b><span>roughly, start to finish</span></div>';
+
+  var n = "";
+  if (S.example){
+    n += notice("info", "Example rows are loaded", "Upload your own sheet on the first step. Nothing can be drafted or sent to the examples.");
+  }
+  if (S.gmailState === "bad"){
+    n += notice("bad", "Gmail isn't reachable from this page", esc(S.gmailWhy || "") );
+  }
+  if (S.canSend === false){
+    n += notice("warn", "Your Gmail connector can't send directly",
+      "It only offers drafts. Create the drafts here, then send them from Gmail.");
+  }
+  if (list.length > 200){
+    n += notice("warn", list.length + " recipients in one go",
+      "Gmail allows roughly 500 a day on a personal account and 2,000 on Workspace, and a sudden spike from a quiet address is what trips spam filters. Consider splitting this over a few days.");
+  }
+  if (already){
+    n += notice("info", already + " of these were already done in this session", "They're skipped, so nobody gets the same email twice.");
+  }
+  var unk = unknownTokens();
+  if (unk.length){
+    n += notice("bad", "Your email has fields that aren't in the sheet",
+      unk.map(function(x){ return "<code>@" + esc(x) + "</code>"; }).join(" ") + " will be sent as typed. Go back and fix them first.");
+  }
+  $("send-notices").innerHTML = n;
+
+  var todo = list.filter(function(r){ return !r.done; }).length;
+  var blocked = S.example || !todo || S.gmailState === "bad" || !!S.run;
+  $("btn-draft").textContent = "Create " + todo + " draft" + (todo === 1 ? "" : "s");
+  $("btn-draft").disabled = blocked;
+  $("confirm-n").placeholder = String(todo);
+  $("confirm-n").disabled = blocked || S.canSend === false;
+  $("btn-send").textContent = "Send " + todo;
+  $("btn-send").disabled = blocked || S.canSend === false || $("confirm-n").value.trim() !== String(todo);
+  $("choose").hidden = !!S.run;
+  $("back-write").disabled = !!S.run;
+}
+
+/* These mean every remaining call will fail the same way, so the run stops. */
+var FATAL = { needs_reauth:1, server_not_connected:1, selection_required:1, server_not_found:1, not_in_manifest:1,
+  blocked_by_policy:1, approval_required:1, not_granted:1, capability_disabled:1, capability_removed:1, consent_required:1, user_changed:1 };
+
+function explain(err, tool){
+  var code = (err && err.code) || "upstream_error";
+  var msg = (err && err.message) || "";
+  switch (code){
+    case "needs_reauth": return "Your Gmail connection has expired. Reconnect it in claude.ai → Settings → Connectors, then reload this page.";
+    case "server_not_connected": return "There's no Gmail connector on your account. Add it in claude.ai → Settings → Connectors, then reload.";
+    case "selection_required": return "You have more than one Gmail connector. Choose which one this page uses when claude.ai asks, then try again.";
+    case "not_in_manifest": return tool === "send_message"
+      ? "Sending isn't allowed for this page, or was declined. Use drafts, or turn Gmail back on in the artifact's connector settings."
+      : "Gmail was turned off for this page, or declined. Turn it back on in the artifact's connector settings.";
+    case "blocked_by_policy": return "Your organisation's policy blocks this page from using Gmail.";
+    case "approval_required": return "Your organisation needs each Gmail call approved, which published pages can't ask for yet.";
+    case "server_unavailable": return tool === "send_message"
+      ? "Gmail didn't answer in time. It may still have sent, so check your Sent folder before retrying this one."
+      : "Gmail didn't answer in time. Check your Drafts before retrying this one.";
+    case "rate_limited": return "Too many requests at once. Wait a minute, then retry the failed ones.";
+    case "tool_error": return "Gmail rejected it: " + msg;
+    case "consent_required": return "Allow this page to use Gmail when Claude asks, then try again.";
+    case "user_changed": return "The signed-in account changed. Reload the page.";
+    case "not_granted": case "capability_disabled": case "capability_removed":
+      return "Connectors aren't available in this view. Open the artifact on claude.ai.";
+    default: return msg || "Something went wrong talking to Gmail.";
+  }
+}
+
+function start(mode){
+  var list = recipients().filter(function(r){ return !r.done; });
+  if (!list.length || !S.mcp || S.example) return;
+  var tool = mode === "draft" ? "create_draft" : "send_message";
+  S.run = { mode: mode, stop: false };
+  $("progress").hidden = false;
+  $("log").innerHTML = "";
+  $("pg-done").innerHTML = "";
+  $("btn-stop").hidden = false;
+  renderSend(); renderSteps();
+
+  var done = 0, ok = 0, failed = [];
+  function status(){
+    $("pg-bar").style.width = Math.round(done / list.length * 100) + "%";
+    $("pg-status").innerHTML = '<b>' + done + '</b> of ' + list.length + ' · ' + ok + ' ' + (mode === "draft" ? "drafted" : "sent") +
+      (failed.length ? ' · <span style="color:var(--crit)">' + failed.length + ' failed</span>' : "");
+  }
+  function logRow(r, good, why){
+    var d = document.createElement("div");
+    d.innerHTML = '<span class="pill ' + (good ? "ok" : "err") + '">' + (good ? (mode === "draft" ? "drafted" : "sent") : "failed") + '</span>' +
+      '<span class="addr mono">' + esc(r.email) + '</span><span class="why">' + esc(why || merge(S.subject, r, false)) + '</span>';
+    $("log").prepend(d);
+  }
+  status();
+
+  var i = 0, fatal = null;
+  function next(){
+    if (S.run.stop || fatal || i >= list.length) return finish();
+    var r = list[i++];
+    var input = {
+      to: [r.email],
+      subject: merge(S.subject, r, false),
+      body: merge(S.body, r, false) + (S.sig.trim() ? "\n\n" + merge(S.sig, r, false) : "")
+    };
+    S.mcp.callTool(GMAIL, tool, input).then(function(){
+      r.done = mode; ok++; done++; logRow(r, true); status();
+    }, function(e){
+      done++; failed.push(r); logRow(r, false, explain(e, tool)); status();
+      if (e && FATAL[e.code]){
+        fatal = e;
+        if (e.code === "not_in_manifest" && tool === "send_message") S.canSend = false;
+      }
+    }).then(function(){
+      if (i < list.length && !S.run.stop && !fatal) setTimeout(next, PACE_MS); else finish();
+    });
+  }
+  var finished = false;
+  function finish(){
+    if (finished) return;
+    finished = true;
+    var stopped = S.run.stop;
+    S.run = null;
+    $("btn-stop").hidden = true;
+    var left = list.length - done;
+    var verb = mode === "draft" ? "drafted" : "sent";
+    var h = "";
+    if (fatal){
+      h += notice("bad", "Stopped after " + done + " — this would fail for everyone", esc(explain(fatal, tool)));
+    } else if (stopped){
+      h += notice("warn", "Stopped", ok + " " + verb + ", " + left + " not attempted. Press the button again to carry on; anyone already done is skipped.");
+    } else {
+      h += notice(failed.length ? "warn" : "good", ok + " " + verb + (failed.length ? ", " + failed.length + " failed" : ""),
+        mode === "draft"
+          ? "They're in your Gmail Drafts folder. Open a few to check them, then send from Gmail, or come back and use Send now."
+          : "Each went out as its own email from your Gmail. Replies arrive as normal threads.");
+    }
+    if (failed.length && !fatal){
+      h += '<button class="btn" id="btn-retry" type="button">Retry the ' + failed.length + ' that failed</button>';
+    }
+    $("pg-done").innerHTML = h;
+    if ($("btn-retry")) $("btn-retry").addEventListener("click", function(){ start(mode); });
+    $("confirm-n").value = "";
+    renderSend(); renderSteps();
+  }
+  next();
+}
+
+/* ============================================================
+   Gmail connection
+   ============================================================ */
+function setConn(s, text){
+  $("conn").dataset.s = s;
+  $("conn").querySelector("span").textContent = text;
+}
+function connect(){
+  if (!window.claude || typeof window.claude.use !== "function"){
+    S.gmailState = "bad";
+    S.gmailWhy = "This page sends through your Gmail connector, which only works when the page is opened on claude.ai. A saved copy of the file can't reach it.";
+    setConn("bad", "Open on claude.ai");
+    return;
+  }
+  window.claude.use("mcp").then(function(mcp){
+    if (!mcp){
+      S.gmailState = "bad";
+      S.gmailWhy = "Connectors aren't available in this view. Pages that use connectors can't be opened from a public link; open it on claude.ai while signed in, and allow Gmail when asked.";
+      setConn("bad", "Gmail unavailable");
+      if (S.step === 2) renderSend();
+      return;
+    }
+    S.mcp = mcp;
+    return mcp.listTools().then(function(res){
+      var g = (res.servers || []).filter(function(s){ return s.server === GMAIL; })[0];
+      if (!g){
+        S.gmailState = "bad";
+        S.gmailWhy = "There's no Gmail connector on your account. Add it in claude.ai → Settings → Connectors, then reload this page. It's looked up by the name \"Gmail\".";
+        setConn("bad", "Connect Gmail");
+      } else if (g.authStatus === "needs_reauth"){
+        S.gmailState = "bad";
+        S.gmailWhy = "Your Gmail connection has expired. Reconnect it in claude.ai → Settings → Connectors, then reload.";
+        setConn("bad", "Reconnect Gmail");
+      } else {
+        S.gmailState = "ok";
+        /* Before consent the list is only what the page declared; once connected it's the real set. */
+        if (g.authStatus === "connected" && g.tools && g.tools.length){
+          S.canSend = g.tools.some(function(t){ return t.name === "send_message"; });
+        }
+        setConn("ok", "Gmail ready");
+      }
+      if (S.step === 2) renderSend();
+    }).catch(function(){
+      S.gmailState = "ok";
+      setConn("wait", "Gmail: checks on first use");
+    });
+  });
+}
+
+/* ============================================================
+   Wiring
+   ============================================================ */
+function bind(){
+  $("steps").addEventListener("click", function(e){
+    var b = e.target.closest(".step");
+    if (b && b.dataset.reachable === "1") go(+b.dataset.i);
+  });
+
+  /* stage 1 */
+  $("file").addEventListener("change", function(){ if (this.files[0]) readFile(this.files[0]); this.value = ""; });
+  var drop = $("drop");
+  ["dragenter","dragover"].forEach(function(t){ drop.addEventListener(t, function(e){ e.preventDefault(); drop.classList.add("over"); }); });
+  ["dragleave","drop"].forEach(function(t){ drop.addEventListener(t, function(e){ e.preventDefault(); drop.classList.remove("over"); }); });
+  drop.addEventListener("drop", function(e){ var f = e.dataTransfer && e.dataTransfer.files[0]; if (f) readFile(f); });
+  $("btn-paste").addEventListener("click", function(){ $("paste").hidden = false; $("paste-text").focus(); });
+  $("btn-paste-x").addEventListener("click", function(){ $("paste").hidden = true; });
+  $("btn-paste-go").addEventListener("click", function(){
+    try { usePaste($("paste-text").value); }
+    catch(e){ $("sheet-msg").innerHTML = notice("bad", "Couldn't read those cells", "Copy them again from the sheet, including the header row."); }
+  });
+  $("sheet-pick").addEventListener("change", function(){ pickTab(this.value); });
+  $("email-col").addEventListener("change", function(){ S.emailCol = +this.value; renderSheet(); });
+  $("grid").addEventListener("change", function(e){
+    var t = e.target;
+    if (t.id === "chk-all"){
+      S.rows.forEach(function(r){ if (r.status === "ok") r.include = t.checked; });
+    } else if (t.dataset.row != null){
+      var r = S.rows[+t.dataset.row]; if (r) r.include = t.checked;
+    }
+    renderSheet();
+  });
+  $("to-write").addEventListener("click", function(){ go(1); });
+
+  /* stage 2 */
+  ["f-subj","f-body","f-sig"].forEach(function(id){
+    var el = $(id);
+    el.addEventListener("focus", function(){ lastFocus = el; });
+    el.addEventListener("input", function(){ onEdit(el); });
+    el.addEventListener("click", function(){ updateSuggest(el); });
+    el.addEventListener("blur", function(){ setTimeout(function(){ if (document.activeElement !== el) sgBox(el).hidden = true; }, 150); });
+    el.addEventListener("keydown", function(e){
+      var box = sgBox(el);
+      if (box.hidden || sgState.el !== el) return;
+      if (e.key === "ArrowDown"){ e.preventDefault(); sgState.sel = (sgState.sel + 1) % sgState.items.length; updateSuggest(el); }
+      else if (e.key === "ArrowUp"){ e.preventDefault(); sgState.sel = (sgState.sel - 1 + sgState.items.length) % sgState.items.length; updateSuggest(el); }
+      else if (e.key === "Enter" || e.key === "Tab"){ e.preventDefault(); insertToken(sgState.items[sgState.sel].key); }
+      else if (e.key === "Escape"){ box.hidden = true; sgState.el = null; }
+    });
+  });
+  ["sg-subj","sg-body","sg-sig"].forEach(function(id){
+    $(id).addEventListener("mousedown", function(e){
+      var c = e.target.closest(".chip");
+      if (c){ e.preventDefault(); insertToken(c.dataset.key); }
+    });
+  });
+  $("chips").addEventListener("mousedown", function(e){ if (e.target.closest(".chip")) e.preventDefault(); });
+  $("chips").addEventListener("click", function(e){
+    var c = e.target.closest(".chip"); if (c) insertToken(c.dataset.key);
+  });
+  $("fb-grid").addEventListener("input", function(e){
+    var k = e.target.dataset.fb; if (!k) return;
+    if (e.target.value) S.fallbacks[k] = e.target.value; else delete S.fallbacks[k];
+    store("fallbacks", S.fallbacks);
+    renderPreview();
+  });
+  $("pv-prev").addEventListener("click", function(){ if (S.pv > 0){ S.pv--; renderPreview(); } });
+  $("pv-next").addEventListener("click", function(){ S.pv++; renderPreview(); });
+  $("back-sheet").addEventListener("click", function(){ go(0); });
+  $("to-send").addEventListener("click", function(){ go(2); });
+
+  /* stage 3 */
+  $("confirm-n").addEventListener("input", function(){ renderSend(); });
+  $("btn-draft").addEventListener("click", function(){ start("draft"); });
+  $("btn-send").addEventListener("click", function(){ start("send"); });
+  $("btn-stop").addEventListener("click", function(){ if (S.run){ S.run.stop = true; this.disabled = true; setTimeout(function(){ $("btn-stop").disabled = false; }, 1500); } });
+  $("back-write").addEventListener("click", function(){ go(1); });
+}
+
+function boot(){
+  S.subject = recall("subject") || DEFAULTS.subject;
+  S.body = recall("body") || DEFAULTS.body;
+  S.sig = recall("sig") || DEFAULTS.sig;
+  try { S.fallbacks = JSON.parse(recall("fallbacks") || "{}") || {}; } catch(e){ S.fallbacks = {}; }
+  if (!S.fallbacks.FirstName && !recall("fallbacks")) S.fallbacks.FirstName = "there";
+
+  S.book = { "Example rows": EXAMPLE.aoa }; S.tabs = ["Example rows"]; S.tab = "Example rows";
+  loadTable(EXAMPLE.aoa);
+  S.example = true;
+
+  bind();
+  renderSheet();
+  go(0);
+  connect();
+}
+boot();
+})();
+</script>

@@ -26,6 +26,24 @@ Published at: https://claude.ai/artifact/TxU8km8LcENoXXxpgk1zgK
 | **4. Message** | `sample.json` drafts subject + body with `{{firstName}}`-style merge tokens; live per-recipient preview | Claude usage |
 | **5. Send** | `create_draft` or `send_message`, one call per recipient, 900 ms apart | — |
 
+## Mail Merge (`mailmerge.html`)
+
+A second artifact for when the contact list already exists: upload a sheet, write the
+email once, and put a personalised copy per person into Gmail.
+
+Published at: https://claude.ai/artifact/4DNTKaTTxxrG2BV51k9kKx
+
+| Stage | What happens |
+|---|---|
+| **1. Sheet** | `.xlsx`, `.xls`, `.csv` or `.ods` (read with SheetJS), or cells pasted from Google Sheets. Every column becomes a field: `First Name` → `@FirstName`. The email column is guessed from the header, or from whichever column looks most like addresses. Missing, invalid and repeated addresses are left out; anyone can be unticked |
+| **2. Write** | Subject, message and signature. Type `@` for a field picker, or click a field chip. A per-field fallback covers blank cells (`@FirstName` defaults to "there"). Live preview steps through each recipient and flags unknown fields and blanks |
+| **3. Send** | `create_draft` or `send_message`, one call per recipient, 900 ms apart. Sending is unlocked by typing the recipient count. Stop mid-run; failures can be retried; anyone already done is skipped |
+
+An `@` that is part of an email address is never treated as a field. Example rows load
+first so the page shows what it does; they use `example.com` and cannot be sent to.
+Subject, body, signature and fallbacks are saved in the browser. Declares Gmail
+`create_draft` and `send_message` only.
+
 ## Find me an angle
 
 A blank box is the hardest part of a prospecting tool, so the brief screen has a
