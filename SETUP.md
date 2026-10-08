@@ -4,6 +4,16 @@ A page that calls connectors runs every call on **the viewer's own account** —
 Lusha credits, their mailbox. That is the behaviour you want. The catch is how a
 connector page is allowed to be shared.
 
+## The short version
+
+Send colleagues the handover page: **https://claude.ai/artifact/Loj8ByqyTk93nXR6m5NdRc**
+(share it publicly from its Share menu first — it declares no connectors, so it can be).
+
+It carries the tool itself as a download and the publish prompt to copy, so each person
+self-serves: download `index.html`, connect their own Lusha and Gmail, publish their own
+copy. Republish the handover page after changing `index.html`, since the file is embedded
+in it.
+
 ## First, check the plan
 
 claude.ai → Settings → Billing.
