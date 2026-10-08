@@ -50,6 +50,26 @@ email. Subject, body, signature and fallbacks are saved in the browser, so the l
 never part of the published page. Declares Gmail
 `create_draft` and `send_message` only.
 
+### Shareable edition (`mailmerge-share.html`)
+
+Published at: https://claude.ai/artifact/1iVL4Rgmn2ZSmYNpYLNBuJ
+
+The connector edition above can never go on a public link, because it calls Gmail with
+the viewer's credentials. The shareable edition is the same page with the connector
+switched off (`EDITION = "share"`), so it declares no capabilities and can be shared
+from its Share menu with anyone.
+
+Instead of drafting in bulk, the send step opens each email ready-made in the
+viewer's own **Gmail**, **Gmail (second signed-in account)** or **Outlook on the
+web**, as a compose link: addressed, subject and body personalised. One click per
+person; nothing is sent until they press Send in their own inbox, and their email app
+adds their usual signature, so the signature editor is hidden. The contact sheet never
+leaves the viewer's browser. The default body carries the opt-out line, since there is
+no signature to hold it.
+
+Never edit `mailmerge-share.html` by hand. Change `mailmerge.html`, then run
+`scripts/build-share.sh` and publish both.
+
 ## Find me an angle
 
 A blank box is the hardest part of a prospecting tool, so the brief screen has a
